@@ -9,24 +9,24 @@ pub struct DenseLayer {
 }
 
 impl DenseLayer {
-    fn new(input_size: u32, output_size: u32) -> Self {
+    pub fn new(input_size: u32, output_size: u32) -> Self {
         Self {
             input_size: input_size,
             output_size: output_size,
-            weights: Matrix::zeros(output_size, input_size),
+            weights: Matrix::zeros(input_size, output_size),
             biases: Vector::zeros(output_size)
         }
     }
 
-    fn input_size(&self) -> u32 {
+    pub fn input_size(&self) -> u32 {
         self.input_size
     }
 
-    fn output_size(&self) -> u32 {
+    pub fn output_size(&self) -> u32 {
         self.output_size
     }
 
-    fn forward(&self, inputs: &Vector) -> Vector {
+    pub fn forward(&self, inputs: &Vector) -> Vector {
         let mut result = self.biases.clone();
         for i in 0..self.output_size {
             let row = &self.weights[i];
