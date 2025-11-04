@@ -3,7 +3,7 @@ use std::ops;
 struct Matrix {
     elems: Vec<f32>,
     width: u32,
-    height: u32
+    height: u32,
 }
 
 impl Matrix {
@@ -11,7 +11,7 @@ impl Matrix {
         Self {
             elems: vec![0.0; (width * height) as usize],
             width: width,
-            height: height
+            height: height,
         }
     }
 
