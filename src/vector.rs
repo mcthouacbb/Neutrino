@@ -4,11 +4,11 @@ use std::ops;
 pub struct Vector(Vec<f32>);
 
 impl Vector {
-    fn zeros(len: u32) -> Self {
+    pub fn zeros(len: u32) -> Self {
         Self(vec![0.0; len as usize])
     }
 
-    fn len(&self) -> u32 {
+    pub fn len(&self) -> u32 {
         self.0.len() as u32
     }
 }

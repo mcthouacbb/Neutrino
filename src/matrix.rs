@@ -8,7 +8,7 @@ pub struct Matrix {
 }
 
 impl Matrix {
-    fn zeros(width: u32, height: u32) -> Self {
+    pub fn zeros(width: u32, height: u32) -> Self {
         Self {
             elems: vec![0.0; (width * height) as usize],
             width: width,
@@ -16,11 +16,11 @@ impl Matrix {
         }
     }
 
-    fn width(&self) -> u32 {
+    pub fn width(&self) -> u32 {
         self.width
     }
 
-    fn height(&self) -> u32 {
+    pub fn height(&self) -> u32 {
         self.height
     }
 }
