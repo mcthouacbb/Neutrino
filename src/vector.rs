@@ -1,7 +1,7 @@
 use std::ops;
 
 #[derive(Clone, Debug)]
-struct Vector(Vec<f32>);
+pub struct Vector(Vec<f32>);
 
 impl Vector {
     fn zeros(len: u32) -> Self {
