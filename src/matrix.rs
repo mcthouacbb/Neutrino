@@ -1,5 +1,6 @@
 use std::ops;
 
+#[derive(Clone, Debug)]
 struct Matrix {
     elems: Vec<f32>,
     width: u32,
