@@ -1,4 +1,4 @@
-use crate::{layer::DenseLayer, network::Network, vector::Vector};
+use crate::{layer::DenseLayer, network::{Network, NetworkBuilder}, vector::Vector};
 
 mod network;
 mod layer;
@@ -8,7 +8,9 @@ mod vector;
 fn main() {
     println!("Hello, world!");
 
-    let mut network = Network::new(vec![Box::new(DenseLayer::new(3, 1))]);
+    let mut builder = NetworkBuilder::new(3);
+    builder.add_dense_layer(1);
+    let mut network = builder.build();
     network.init_rand();
     let mut inputs = Vector::zeros(3);
     inputs[0] = 5.0;

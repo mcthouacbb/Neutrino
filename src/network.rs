@@ -1,16 +1,16 @@
-use crate::{layer::Layer, vector::Vector};
+use crate::{layer::{DenseLayer, Layer}, vector::Vector};
 
 pub struct Network {
     layers: Vec<Box<dyn Layer>>
 }
 
 impl Network {
-    pub fn new(layers: Vec<Box<dyn Layer>>) -> Self {
+    fn new(layers: Vec<Box<dyn Layer>>) -> Self {
         Self {
             layers: layers
         }
     }
-    
+
     pub fn forward(&self, inputs: &Vector) -> Vector {
         let mut output = self.layers[0].forward(inputs);
         for layer in self.layers.iter().skip(1) {
@@ -23,5 +23,32 @@ impl Network {
         for layer in &mut self.layers {
             layer.init_rand();
         }
+    }
+}
+
+pub struct NetworkBuilder {
+    input_size: u32,
+    layers: Vec<Box<dyn Layer>>
+}
+
+impl NetworkBuilder {
+    pub fn new(input_size: u32) -> Self {
+        Self {
+            input_size: input_size,
+            layers: Vec::new()
+        }
+    }
+
+    pub fn add_dense_layer(&mut self, output_size: u32) {
+        let input_size = if let Some(last_layer) = self.layers.last() {
+            last_layer.as_ref().output_size()
+        } else {
+            self.input_size
+        };
+        self.layers.push(Box::new(DenseLayer::new(input_size, output_size)));
+    }
+
+    pub fn build(self) -> Network {
+        Network::new(self.layers)
     }
 }

@@ -20,14 +20,6 @@ impl DenseLayer {
         }
     }
 
-    pub fn input_size(&self) -> u32 {
-        self.input_size
-    }
-
-    pub fn output_size(&self) -> u32 {
-        self.output_size
-    }
-
     pub fn weights(&self) -> &Matrix {
         &self.weights
     }
@@ -46,6 +38,14 @@ impl DenseLayer {
 }
 
 impl Layer for DenseLayer {
+    fn input_size(&self) -> u32 {
+        self.input_size
+    }
+
+    fn output_size(&self) -> u32 {
+        self.output_size
+    }
+
     fn init_rand(&mut self) {
         for weight in self.weights.elems_mut() {
             *weight = rand::rng().random_range(-1.0..=1.0);
