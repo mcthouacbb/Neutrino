@@ -1,5 +1,7 @@
-use crate::{matrix::Matrix, vector::Vector};
+use rand::Rng;
 
+use crate::{matrix::Matrix, vector::Vector};
+use super::Layer;
 
 pub struct DenseLayer {
     input_size: u32,
@@ -26,17 +28,6 @@ impl DenseLayer {
         self.output_size
     }
 
-    pub fn forward(&self, inputs: &Vector) -> Vector {
-        let mut result = self.biases.clone();
-        for i in 0..self.output_size {
-            let row = &self.weights[i];
-            for j in 0..self.input_size {
-                result[i] += inputs[j] * row[j as usize];
-            }
-        }
-        result
-    }
-
     pub fn weights(&self) -> &Matrix {
         &self.weights
     }
@@ -51,5 +42,24 @@ impl DenseLayer {
 
     pub fn biases_mut(&mut self) -> &mut Vector {
         &mut self.biases
+    }
+}
+
+impl Layer for DenseLayer {
+    fn init_rand(&mut self) {
+        for weight in self.weights.elems_mut() {
+            *weight = rand::rng().random_range(-1.0..=1.0);
+        }
+    }
+
+    fn forward(&self, inputs: &Vector) -> Vector {
+        let mut result = self.biases.clone();
+        for i in 0..self.output_size {
+            let row = &self.weights[i];
+            for j in 0..self.input_size {
+                result[i] += inputs[j] * row[j as usize];
+            }
+        }
+        result
     }
 }
