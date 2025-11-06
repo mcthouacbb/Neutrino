@@ -16,6 +16,14 @@ impl Matrix {
         }
     }
 
+    pub fn elems(&self) -> &Vec<f32> {
+        &self.elems
+    }
+
+    pub fn elems_mut(&mut self) -> &mut Vec<f32> {
+        &mut self.elems
+    }
+
     pub fn width(&self) -> u32 {
         self.width
     }

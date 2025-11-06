@@ -36,4 +36,20 @@ impl DenseLayer {
         }
         result
     }
+
+    pub fn weights(&self) -> &Matrix {
+        &self.weights
+    }
+
+    pub fn weights_mut(&mut self) -> &mut Matrix {
+        &mut self.weights
+    }
+
+    pub fn biases(&self) -> &Vector {
+        &self.biases
+    }
+
+    pub fn biases_mut(&mut self) -> &mut Vector {
+        &mut self.biases
+    }
 }

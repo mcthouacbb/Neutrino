@@ -1,3 +1,5 @@
+use rand::Rng;
+
 use crate::{layer::DenseLayer, vector::Vector};
 
 pub struct Network {
@@ -22,5 +24,13 @@ impl Network {
             output = layer.forward(&output);
         }
         output
+    }
+
+    pub fn init_rand(&mut self) {
+        for layer in &mut self.layers {
+            for weight in layer.weights_mut().elems_mut() {
+                *weight = rand::rng().random_range(-1.0..=1.0);
+            }
+        }
     }
 }
