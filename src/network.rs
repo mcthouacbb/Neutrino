@@ -1,21 +1,15 @@
-use rand::Rng;
-
-use crate::{layer::DenseLayer, vector::Vector};
+use crate::{
+    layer::{DenseLayer, Layer, ReluLayer},
+    vector::Vector,
+};
 
 pub struct Network {
-    layers: Vec<DenseLayer>
+    layers: Vec<Box<dyn Layer>>,
 }
 
 impl Network {
-    pub fn new<const N: usize>(layer_sizes: [u32; N]) -> Network {
-        assert!(N > 1);
-        let mut result = Self {
-            layers: Vec::new()
-        };
-        for i in 0..(N - 1) {
-            result.layers.push(DenseLayer::new(layer_sizes[i], layer_sizes[i + 1]));
-        }
-        result
+    fn new(layers: Vec<Box<dyn Layer>>) -> Self {
+        Self { layers: layers }
     }
 
     pub fn forward(&self, inputs: &Vector) -> Vector {
@@ -28,9 +22,45 @@ impl Network {
 
     pub fn init_rand(&mut self) {
         for layer in &mut self.layers {
-            for weight in layer.weights_mut().elems_mut() {
-                *weight = rand::rng().random_range(-1.0..=1.0);
-            }
+            layer.init_rand();
+        }
+    }
+}
+
+pub struct NetworkBuilder {
+    input_size: u32,
+    layers: Vec<Box<dyn Layer>>,
+}
+
+impl NetworkBuilder {
+    pub fn new(input_size: u32) -> Self {
+        Self {
+            input_size: input_size,
+            layers: Vec::new(),
+        }
+    }
+
+    pub fn add_dense_layer(&mut self, output_size: u32) {
+        self.layers.push(Box::new(DenseLayer::new(
+            self.next_input_size(),
+            output_size,
+        )));
+    }
+
+    pub fn add_relu(&mut self) {
+        self.layers
+            .push(Box::new(ReluLayer::new(self.next_input_size())));
+    }
+
+    pub fn build(self) -> Network {
+        Network::new(self.layers)
+    }
+
+    fn next_input_size(&self) -> u32 {
+        if let Some(last_layer) = self.layers.last() {
+            last_layer.as_ref().output_size()
+        } else {
+            self.input_size
         }
     }
 }
