@@ -1,4 +1,4 @@
-use crate::{layer::{DenseLayer, Layer}, vector::Vector};
+use crate::{layer::{DenseLayer, Layer, ReluLayer}, vector::Vector};
 
 pub struct Network {
     layers: Vec<Box<dyn Layer>>
@@ -40,15 +40,22 @@ impl NetworkBuilder {
     }
 
     pub fn add_dense_layer(&mut self, output_size: u32) {
-        let input_size = if let Some(last_layer) = self.layers.last() {
-            last_layer.as_ref().output_size()
-        } else {
-            self.input_size
-        };
-        self.layers.push(Box::new(DenseLayer::new(input_size, output_size)));
+        self.layers.push(Box::new(DenseLayer::new(self.next_input_size(), output_size)));
+    }
+
+    pub fn add_relu(&mut self) {
+        self.layers.push(Box::new(ReluLayer::new(self.next_input_size())));
     }
 
     pub fn build(self) -> Network {
         Network::new(self.layers)
+    }
+
+    fn next_input_size(&self) -> u32 {
+        if let Some(last_layer) = self.layers.last() {
+            last_layer.as_ref().output_size()
+        } else {
+            self.input_size
+        }
     }
 }

@@ -53,6 +53,8 @@ impl Layer for DenseLayer {
     }
 
     fn forward(&self, inputs: &Vector) -> Vector {
+        assert!(inputs.len() == self.input_size());
+
         let mut result = self.biases.clone();
         for i in 0..self.output_size {
             let row = &self.weights[i];

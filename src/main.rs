@@ -10,6 +10,7 @@ fn main() {
 
     let mut builder = NetworkBuilder::new(3);
     builder.add_dense_layer(1);
+    builder.add_relu();
     let mut network = builder.build();
     network.init_rand();
     let mut inputs = Vector::zeros(3);
