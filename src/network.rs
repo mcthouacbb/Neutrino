@@ -1,14 +1,15 @@
-use crate::{layer::{DenseLayer, Layer, ReluLayer}, vector::Vector};
+use crate::{
+    layer::{DenseLayer, Layer, ReluLayer},
+    vector::Vector,
+};
 
 pub struct Network {
-    layers: Vec<Box<dyn Layer>>
+    layers: Vec<Box<dyn Layer>>,
 }
 
 impl Network {
     fn new(layers: Vec<Box<dyn Layer>>) -> Self {
-        Self {
-            layers: layers
-        }
+        Self { layers: layers }
     }
 
     pub fn forward(&self, inputs: &Vector) -> Vector {
@@ -28,23 +29,27 @@ impl Network {
 
 pub struct NetworkBuilder {
     input_size: u32,
-    layers: Vec<Box<dyn Layer>>
+    layers: Vec<Box<dyn Layer>>,
 }
 
 impl NetworkBuilder {
     pub fn new(input_size: u32) -> Self {
         Self {
             input_size: input_size,
-            layers: Vec::new()
+            layers: Vec::new(),
         }
     }
 
     pub fn add_dense_layer(&mut self, output_size: u32) {
-        self.layers.push(Box::new(DenseLayer::new(self.next_input_size(), output_size)));
+        self.layers.push(Box::new(DenseLayer::new(
+            self.next_input_size(),
+            output_size,
+        )));
     }
 
     pub fn add_relu(&mut self) {
-        self.layers.push(Box::new(ReluLayer::new(self.next_input_size())));
+        self.layers
+            .push(Box::new(ReluLayer::new(self.next_input_size())));
     }
 
     pub fn build(self) -> Network {

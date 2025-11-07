@@ -1,5 +1,5 @@
-use crate::vector::Vector;
 use super::Layer;
+use crate::vector::Vector;
 
 pub struct ReluLayer {
     size: u32,
@@ -7,9 +7,7 @@ pub struct ReluLayer {
 
 impl ReluLayer {
     pub fn new(size: u32) -> Self {
-        Self {
-            size: size
-        }
+        Self { size: size }
     }
 }
 
@@ -17,15 +15,13 @@ impl Layer for ReluLayer {
     fn input_size(&self) -> u32 {
         self.size
     }
-    
+
     fn output_size(&self) -> u32 {
         self.size
     }
 
-    fn init_rand(&mut self) {
-        
-    }
-    
+    fn init_rand(&mut self) {}
+
     fn forward(&self, inputs: &Vector) -> Vector {
         assert!(inputs.len() == self.input_size());
 

@@ -1,7 +1,7 @@
 use rand::Rng;
 
-use crate::{matrix::Matrix, vector::Vector};
 use super::Layer;
+use crate::{matrix::Matrix, vector::Vector};
 
 pub struct DenseLayer {
     input_size: u32,
@@ -16,7 +16,7 @@ impl DenseLayer {
             input_size: input_size,
             output_size: output_size,
             weights: Matrix::zeros(input_size, output_size),
-            biases: Vector::zeros(output_size)
+            biases: Vector::zeros(output_size),
         }
     }
 

@@ -1,8 +1,12 @@
-use crate::{layer::DenseLayer, network::{Network, NetworkBuilder}, vector::Vector};
+use crate::{
+    layer::DenseLayer,
+    network::{Network, NetworkBuilder},
+    vector::Vector,
+};
 
-mod network;
 mod layer;
 mod matrix;
+mod network;
 mod vector;
 
 fn main() {
