@@ -66,11 +66,11 @@ impl Tensor {
         }
     }
 
-    pub fn elems(&self) -> &Vec<f32> {
+    pub fn elems(&self) -> &[f32] {
         &self.elems
     }
 
-    pub fn elems_mut(&mut self) -> &mut Vec<f32> {
+    pub fn elems_mut(&mut self) -> &mut [f32] {
         &mut self.elems
     }
 
