@@ -1,6 +1,5 @@
 use crate::{
-    layer::{DenseLayer, Layer, ReluLayer},
-    vector::Vector,
+    layer::{DenseLayer, Layer, ReluLayer}, tensor::Tensor
 };
 
 pub struct Network {
@@ -12,7 +11,7 @@ impl Network {
         Self { layers: layers }
     }
 
-    pub fn forward(&self, inputs: &Vector) -> Vector {
+    pub fn forward(&self, inputs: &Tensor) -> Tensor {
         let mut output = self.layers[0].forward(inputs);
         for layer in self.layers.iter().skip(1) {
             output = layer.forward(&output);

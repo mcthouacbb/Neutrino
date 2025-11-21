@@ -1,13 +1,13 @@
 use rand::Rng;
 
 use super::Layer;
-use crate::{matrix::Matrix, vector::Vector};
+use crate::tensor::{Shape, Tensor};
 
 pub struct DenseLayer {
     input_size: u32,
     output_size: u32,
-    weights: Matrix,
-    biases: Vector,
+    weights: Tensor,
+    biases: Tensor,
 }
 
 impl DenseLayer {
@@ -15,24 +15,24 @@ impl DenseLayer {
         Self {
             input_size: input_size,
             output_size: output_size,
-            weights: Matrix::zeros(input_size, output_size),
-            biases: Vector::zeros(output_size),
+            weights: Tensor::zeros(Shape::matrix(input_size, output_size)),
+            biases: Tensor::zeros(Shape::vector(output_size)),
         }
     }
 
-    pub fn weights(&self) -> &Matrix {
+    pub fn weights(&self) -> &Tensor {
         &self.weights
     }
 
-    pub fn weights_mut(&mut self) -> &mut Matrix {
+    pub fn weights_mut(&mut self) -> &mut Tensor {
         &mut self.weights
     }
 
-    pub fn biases(&self) -> &Vector {
+    pub fn biases(&self) -> &Tensor {
         &self.biases
     }
 
-    pub fn biases_mut(&mut self) -> &mut Vector {
+    pub fn biases_mut(&mut self) -> &mut Tensor {
         &mut self.biases
     }
 }
@@ -52,14 +52,13 @@ impl Layer for DenseLayer {
         }
     }
 
-    fn forward(&self, inputs: &Vector) -> Vector {
-        assert!(inputs.len() == self.input_size());
+    fn forward(&self, inputs: &Tensor) -> Tensor {
+        assert!(*inputs.shape() == Shape::vector(self.input_size()));
 
         let mut result = self.biases.clone();
         for i in 0..self.output_size {
-            let row = &self.weights[i];
             for j in 0..self.input_size {
-                result[i] += inputs[j] * row[j as usize];
+                result[i] += inputs[j] * self.weights[(i, j)];
             }
         }
         result
