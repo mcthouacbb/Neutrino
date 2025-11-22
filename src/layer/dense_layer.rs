@@ -62,6 +62,12 @@ impl Layer for DenseLayer {
         self.backwardable_idx
     }
 
+    fn zero_grads(&self, grads: &mut [Tensor]) {
+        assert!(grads.len() as u32 == self.num_backwardables());
+        grads[0] = Tensor::zeros(*self.weights.shape());
+        grads[1] = Tensor::zeros(*self.biases.shape());
+    }
+
     fn forward(&self, inputs: &Tensor) -> Tensor {
         assert!(*inputs.shape() == Shape::vector(self.input_size()));
 

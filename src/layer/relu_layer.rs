@@ -30,6 +30,10 @@ impl Layer for ReluLayer {
         0
     }
 
+    fn zero_grads(&self, grads: &mut [Tensor]) {
+        assert!(grads.len() as u32 == self.num_backwardables());
+    }
+
     fn forward(&self, inputs: &Tensor) -> Tensor {
         assert!(*inputs.shape() == Shape::vector(self.input_size()));
 

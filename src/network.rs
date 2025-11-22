@@ -1,6 +1,6 @@
 use crate::{
     layer::{DenseLayer, Layer, ReluLayer},
-    tensor::Tensor,
+    tensor::{Shape, Tensor},
 };
 
 pub struct Network {
@@ -11,7 +11,13 @@ pub struct Network {
 
 impl Network {
     fn new(layers: Vec<Box<dyn Layer>>, num_backwardables: u32) -> Self {
-        Self { layers, num_backwardables, grads: Vec::new() }
+        let mut result = Self {
+            layers,
+            num_backwardables,
+            grads: vec![Tensor::zeros(Shape::scalar()); num_backwardables as usize],
+        };
+        result.zero_grads();
+        result
     }
 
     pub fn forward(&self, inputs: &Tensor) -> Tensor {
@@ -25,6 +31,12 @@ impl Network {
     pub fn init_rand(&mut self) {
         for layer in &mut self.layers {
             layer.init_rand();
+        }
+    }
+
+    pub fn zero_grads(&mut self) {
+        for layer in &self.layers {
+            layer.zero_grads(&mut self.grads[layer.grad_idx_range()]);
         }
     }
 }
@@ -57,7 +69,7 @@ impl NetworkBuilder {
     }
 
     pub fn build(self) -> Network {
-        Network::new(self.layers)
+        Network::new(self.layers, self.num_backwardables)
     }
 
     fn add_layer(&mut self, layer: Box<dyn Layer>) {
