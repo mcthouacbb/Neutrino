@@ -26,6 +26,10 @@ impl Layer for ReluLayer {
         0
     }
 
+    fn backwardable_idx(&self) -> u32 {
+        0
+    }
+
     fn forward(&self, inputs: &Tensor) -> Tensor {
         assert!(*inputs.shape() == Shape::vector(self.input_size()));
 

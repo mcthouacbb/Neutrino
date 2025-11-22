@@ -5,11 +5,13 @@ use crate::{
 
 pub struct Network {
     layers: Vec<Box<dyn Layer>>,
+    num_backwardables: u32,
+    grads: Vec<Tensor>,
 }
 
 impl Network {
-    fn new(layers: Vec<Box<dyn Layer>>) -> Self {
-        Self { layers }
+    fn new(layers: Vec<Box<dyn Layer>>, num_backwardables: u32) -> Self {
+        Self { layers, num_backwardables, grads: Vec::new() }
     }
 
     pub fn forward(&self, inputs: &Tensor) -> Tensor {

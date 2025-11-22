@@ -58,6 +58,10 @@ impl Layer for DenseLayer {
         2
     }
 
+    fn backwardable_idx(&self) -> u32 {
+        self.backwardable_idx
+    }
+
     fn forward(&self, inputs: &Tensor) -> Tensor {
         assert!(*inputs.shape() == Shape::vector(self.input_size()));
 

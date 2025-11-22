@@ -11,5 +11,6 @@ pub trait Layer {
 
     fn init_rand(&mut self);
     fn num_backwardables(&self) -> u32;
+    fn backwardable_idx(&self) -> u32;
     fn forward(&self, inputs: &Tensor) -> Tensor;
 }
