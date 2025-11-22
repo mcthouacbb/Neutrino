@@ -1,6 +1,7 @@
 use crate::{
     layer::DenseLayer,
-    network::{Network, NetworkBuilder}, tensor::{Shape, Tensor},
+    network::{Network, NetworkBuilder},
+    tensor::{Shape, Tensor},
 };
 
 mod layer;

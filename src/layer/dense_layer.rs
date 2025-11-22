@@ -8,15 +8,17 @@ pub struct DenseLayer {
     output_size: u32,
     weights: Tensor,
     biases: Tensor,
+    backwardable_idx: u32,
 }
 
 impl DenseLayer {
-    pub fn new(input_size: u32, output_size: u32) -> Self {
+    pub fn new(input_size: u32, output_size: u32, backwardable_idx: u32) -> Self {
         Self {
             input_size,
             output_size,
             weights: Tensor::zeros(Shape::matrix(input_size, output_size)),
             biases: Tensor::zeros(Shape::vector(output_size)),
+            backwardable_idx: backwardable_idx,
         }
     }
 
@@ -50,6 +52,10 @@ impl Layer for DenseLayer {
         for weight in self.weights.elems_mut() {
             *weight = rand::rng().random_range(-1.0..=1.0);
         }
+    }
+
+    fn num_backwardables(&self) -> u32 {
+        2
     }
 
     fn forward(&self, inputs: &Tensor) -> Tensor {

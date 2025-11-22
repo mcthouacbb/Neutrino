@@ -1,5 +1,6 @@
 use crate::{
-    layer::{DenseLayer, Layer, ReluLayer}, tensor::Tensor
+    layer::{DenseLayer, Layer, ReluLayer},
+    tensor::Tensor,
 };
 
 pub struct Network {
@@ -28,6 +29,7 @@ impl Network {
 
 pub struct NetworkBuilder {
     input_size: u32,
+    num_backwardables: u32,
     layers: Vec<Box<dyn Layer>>,
 }
 
@@ -35,24 +37,30 @@ impl NetworkBuilder {
     pub fn new(input_size: u32) -> Self {
         Self {
             input_size,
+            num_backwardables: 0,
             layers: Vec::new(),
         }
     }
 
     pub fn add_dense_layer(&mut self, output_size: u32) {
-        self.layers.push(Box::new(DenseLayer::new(
+        self.add_layer(Box::new(DenseLayer::new(
             self.next_input_size(),
             output_size,
+            self.num_backwardables,
         )));
     }
 
     pub fn add_relu(&mut self) {
-        self.layers
-            .push(Box::new(ReluLayer::new(self.next_input_size())));
+        self.add_layer(Box::new(ReluLayer::new(self.next_input_size())));
     }
 
     pub fn build(self) -> Network {
         Network::new(self.layers)
+    }
+
+    fn add_layer(&mut self, layer: Box<dyn Layer>) {
+        self.num_backwardables += layer.num_backwardables();
+        self.layers.push(layer);
     }
 
     fn next_input_size(&self) -> u32 {

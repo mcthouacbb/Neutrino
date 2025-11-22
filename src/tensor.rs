@@ -9,7 +9,10 @@ pub struct Shape {
 
 impl Shape {
     pub fn scalar() -> Self {
-        Self { dims: [1; 4], order: 0 }
+        Self {
+            dims: [1; 4],
+            order: 0,
+        }
     }
 
     pub fn vector(size: u32) -> Self {

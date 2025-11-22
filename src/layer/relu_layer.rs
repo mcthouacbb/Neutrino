@@ -22,6 +22,10 @@ impl Layer for ReluLayer {
 
     fn init_rand(&mut self) {}
 
+    fn num_backwardables(&self) -> u32 {
+        0
+    }
+
     fn forward(&self, inputs: &Tensor) -> Tensor {
         assert!(*inputs.shape() == Shape::vector(self.input_size()));
 
