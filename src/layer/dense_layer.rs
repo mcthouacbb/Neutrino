@@ -13,8 +13,8 @@ pub struct DenseLayer {
 impl DenseLayer {
     pub fn new(input_size: u32, output_size: u32) -> Self {
         Self {
-            input_size: input_size,
-            output_size: output_size,
+            input_size,
+            output_size,
             weights: Tensor::zeros(Shape::matrix(input_size, output_size)),
             biases: Tensor::zeros(Shape::vector(output_size)),
         }

@@ -8,7 +8,7 @@ pub struct Network {
 
 impl Network {
     fn new(layers: Vec<Box<dyn Layer>>) -> Self {
-        Self { layers: layers }
+        Self { layers }
     }
 
     pub fn forward(&self, inputs: &Tensor) -> Tensor {
@@ -34,7 +34,7 @@ pub struct NetworkBuilder {
 impl NetworkBuilder {
     pub fn new(input_size: u32) -> Self {
         Self {
-            input_size: input_size,
+            input_size,
             layers: Vec::new(),
         }
     }

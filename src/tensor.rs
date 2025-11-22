@@ -62,7 +62,7 @@ impl Tensor {
     pub fn zeros(shape: Shape) -> Self {
         Self {
             elems: vec![0.0; shape.elems() as usize],
-            shape: shape,
+            shape,
         }
     }
 

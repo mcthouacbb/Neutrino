@@ -7,7 +7,7 @@ pub struct ReluLayer {
 
 impl ReluLayer {
     pub fn new(size: u32) -> Self {
-        Self { size: size }
+        Self { size }
     }
 }
 
