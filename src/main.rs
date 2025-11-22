@@ -12,8 +12,11 @@ fn main() {
     println!("Hello, world!");
 
     let mut builder = NetworkBuilder::new(3);
-    builder.add_dense_layer(1);
+    builder.add_dense_layer(5);
     builder.add_relu();
+    builder.add_dense_layer(4);
+    builder.add_relu();
+    builder.add_dense_layer(1);
     let mut network = builder.build();
     network.init_rand();
     let mut inputs = Tensor::zeros(Shape::vector(3));

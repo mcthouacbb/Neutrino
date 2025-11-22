@@ -16,7 +16,7 @@ impl DenseLayer {
         Self {
             input_size,
             output_size,
-            weights: Tensor::zeros(Shape::matrix(input_size, output_size)),
+            weights: Tensor::zeros(Shape::matrix(output_size, input_size)),
             biases: Tensor::zeros(Shape::vector(output_size)),
             backwardable_idx: backwardable_idx,
         }
