@@ -5,6 +5,7 @@ use crate::{
 };
 
 mod layer;
+mod loss;
 mod network;
 mod tensor;
 
@@ -23,6 +24,9 @@ fn main() {
     inputs[0] = 5.0;
     inputs[1] = 3.0;
     inputs[2] = 1.0;
+    let target = Tensor::zeros(Shape::vector(1));
     let output = network.forward(&inputs)[0];
+    let loss = network.forward_loss(&inputs, &target);
     println!("Network output: {}", output);
+    println!("Network loss: {}", loss);
 }
