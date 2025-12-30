@@ -24,21 +24,25 @@ fn main() {
     inputs[0] = 5.0;
     inputs[1] = 3.0;
     inputs[2] = 1.0;
-    let target = Tensor::zeros(Shape::vector(1));
+    let mut target = Tensor::zeros(Shape::vector(1));
+    target[0] = 3.0;
     let output = network.forward(&inputs)[0];
     let loss = network.forward_loss(&inputs, &target);
     println!("Network output: {}", output);
     println!("Network loss: {}", loss);
 
-    for i in 0..100 {
+    for i in 0..1000 {
         let mut grads = network.zero_grads();
         network.backward(&inputs, &target, &mut grads);
         network.update(&grads, 0.01);
 
-        let new_output = network.forward(&inputs)[0];
-        let new_loss = network.forward_loss(&inputs, &target);
+        if i % 100 == 0 {
+            let new_output = network.forward(&inputs)[0];
+            let new_loss = network.forward_loss(&inputs, &target);
 
-        println!("Network output: {}", new_output);
-        println!("Network loss: {}", new_loss);
+            println!("Epoch: {}", i);
+            println!("Network output: {}", new_output);
+            println!("Network loss: {}", new_loss);
+        }
     }
 }
