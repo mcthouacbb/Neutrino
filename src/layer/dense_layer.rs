@@ -79,4 +79,31 @@ impl Layer for DenseLayer {
         }
         result
     }
+
+    fn backward(
+        &self,
+        output_grads: &Tensor,
+        inputs: &Tensor,
+        result_grads: &mut [Tensor],
+    ) -> Tensor {
+        // bias gradients
+        for i in 0..self.output_size {
+            result_grads[1][i] += output_grads[i];
+        }
+
+        // weight gradients
+        for i in 0..self.output_size {
+            for j in 0..self.input_size {
+                result_grads[0][(i, j)] += inputs[j] * output_grads[i];
+            }
+        }
+
+        let mut input_grads = Tensor::zeros(Shape::vector(self.input_size));
+        for j in 0..self.input_size {
+            for i in 0..self.output_size {
+                input_grads[j] += output_grads[i] * self.weights[(i, j)];
+            }
+        }
+        input_grads
+    }
 }

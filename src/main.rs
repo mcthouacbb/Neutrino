@@ -29,4 +29,7 @@ fn main() {
     let loss = network.forward_loss(&inputs, &target);
     println!("Network output: {}", output);
     println!("Network loss: {}", loss);
+
+    let mut grads = network.zero_grads();
+    network.backward(&inputs, &target, &mut grads);
 }

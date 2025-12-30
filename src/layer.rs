@@ -20,4 +20,10 @@ pub trait Layer {
     }
     fn zero_grads(&self, grads: &mut [Tensor]);
     fn forward(&self, inputs: &Tensor) -> Tensor;
+    fn backward(
+        &self,
+        output_grads: &Tensor,
+        inputs: &Tensor,
+        result_grads: &mut [Tensor],
+    ) -> Tensor;
 }

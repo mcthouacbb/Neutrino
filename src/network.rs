@@ -4,11 +4,12 @@ use crate::{
     tensor::{Shape, Tensor},
 };
 
+pub struct NetworkGrads(Vec<Tensor>);
+
 pub struct Network {
     layers: Vec<Box<dyn Layer>>,
     loss_fn: Box<dyn Loss>,
     num_backwardables: u32,
-    grads: Vec<Tensor>,
 }
 
 impl Network {
@@ -17,9 +18,7 @@ impl Network {
             layers,
             loss_fn: Box::new(Mse::new()),
             num_backwardables,
-            grads: vec![Tensor::zeros(Shape::scalar()); num_backwardables as usize],
         };
-        result.zero_grads();
         result
     }
 
@@ -47,16 +46,31 @@ impl Network {
         self.forward_all(inputs).last().unwrap().clone()
     }
 
+    pub fn backward(&mut self, inputs: &Tensor, targets: &Tensor, grads: &mut NetworkGrads) {
+        let (outputs, loss) = self.forward_all_loss(inputs, targets);
+
+        let mut output_grads = self.loss_fn.backward(outputs.last().unwrap(), targets);
+        for (idx, layer) in self.layers.iter().enumerate().rev() {
+            let layer_grads = &mut grads.0[layer.grad_idx_range()];
+            output_grads = layer.backward(&output_grads, &outputs[idx], layer_grads);
+        }
+    }
+
     pub fn init_rand(&mut self) {
         for layer in &mut self.layers {
             layer.init_rand();
         }
     }
 
-    pub fn zero_grads(&mut self) {
+    pub fn zero_grads(&self) -> NetworkGrads {
+        let mut result = NetworkGrads(vec![
+            Tensor::zeros(Shape::scalar());
+            self.num_backwardables as usize
+        ]);
         for layer in &self.layers {
-            layer.zero_grads(&mut self.grads[layer.grad_idx_range()]);
+            layer.zero_grads(&mut result.0[layer.grad_idx_range()]);
         }
+        result
     }
 }
 

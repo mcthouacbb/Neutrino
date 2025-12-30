@@ -43,4 +43,19 @@ impl Layer for ReluLayer {
         }
         result
     }
+
+    fn backward(
+        &self,
+        output_grads: &Tensor,
+        inputs: &Tensor,
+        result_grads: &mut [Tensor],
+    ) -> Tensor {
+        let mut input_grads = output_grads.clone();
+        for i in 0..self.size {
+            if inputs[i] < 0.0 {
+                input_grads[i] = 0.0;
+            }
+        }
+        input_grads
+    }
 }
