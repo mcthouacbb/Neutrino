@@ -106,4 +106,14 @@ impl Layer for DenseLayer {
         }
         input_grads
     }
+
+    fn update(&mut self, grads: &[Tensor], lr: f32) {
+        for i in 0..self.output_size * self.input_size {
+            self.weights_mut().elems_mut()[i as usize] -= lr * grads[0].elems()[i as usize];
+        }
+
+        for i in 0..self.output_size {
+            self.biases_mut().elems_mut()[i as usize] -= lr * grads[1].elems()[i as usize];
+        }
+    }
 }

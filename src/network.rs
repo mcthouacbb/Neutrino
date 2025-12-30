@@ -56,6 +56,12 @@ impl Network {
         }
     }
 
+    pub fn update(&mut self, grads: &NetworkGrads, lr: f32) {
+        for layer in self.layers.iter_mut() {
+            layer.update(&grads.0[layer.grad_idx_range()], lr);
+        }
+    }
+
     pub fn init_rand(&mut self) {
         for layer in &mut self.layers {
             layer.init_rand();

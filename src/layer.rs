@@ -26,4 +26,5 @@ pub trait Layer {
         inputs: &Tensor,
         result_grads: &mut [Tensor],
     ) -> Tensor;
+    fn update(&mut self, grads: &[Tensor], lr: f32);
 }

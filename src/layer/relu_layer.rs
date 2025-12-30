@@ -58,4 +58,6 @@ impl Layer for ReluLayer {
         }
         input_grads
     }
+
+    fn update(&mut self, grads: &[Tensor], lr: f32) {}
 }
