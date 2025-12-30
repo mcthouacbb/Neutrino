@@ -1,3 +1,4 @@
+use core::fmt;
 use std::ops::{Index, IndexMut};
 
 // more shapes TBD
@@ -9,7 +10,10 @@ pub struct Shape {
 
 impl Shape {
     pub fn scalar() -> Self {
-        Self { dims: [1; 4], order: 0 }
+        Self {
+            dims: [1; 4],
+            order: 0,
+        }
     }
 
     pub fn vector(size: u32) -> Self {
@@ -49,6 +53,19 @@ impl Shape {
             result += indices[i as usize];
         }
         result
+    }
+}
+
+impl fmt::Display for Shape {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[")?;
+        for i in 0..self.order() {
+            if i != 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{}", self.dim(i))?;
+        }
+        write!(f, "]")
     }
 }
 
