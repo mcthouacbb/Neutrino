@@ -1,3 +1,5 @@
+use std::{fs::File, io::Write};
+
 use crate::{
     layer::DenseLayer,
     network::{Network, NetworkBuilder},
@@ -79,5 +81,18 @@ fn main() {
         println!("Input: {}", data_pt.input[0]);
         println!("    Result: {}", result[0]);
         println!("    Target: {}", data_pt.target[0]);
+    }
+
+    // csv stuff
+    let mut points_file = File::create("points.csv").unwrap();
+
+    writeln!(points_file, "x,net,target");
+    for data_pt in &data_points {
+        let result = network.forward(&data_pt.input);
+        writeln!(
+            points_file,
+            "{},{},{}",
+            data_pt.input[0], result[0], data_pt.target[0]
+        );
     }
 }
