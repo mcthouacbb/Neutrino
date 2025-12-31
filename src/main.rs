@@ -9,40 +9,75 @@ mod loss;
 mod network;
 mod tensor;
 
+fn target_fn(mut x: f32) -> f32 {
+    x = x / 10.0;
+    if x <= 0.0 {
+        0.0
+    } else if x >= 1.0 {
+        1.0
+    } else {
+        (256.0 * x.powi(5) - 640.0 * x.powi(4) + 512.0 * x.powi(3) - 128.0 * x.powi(2)) / 3.0 + x
+    }
+}
+
+struct DataPoint {
+    input: Tensor,
+    target: Tensor,
+}
+
+fn get_data_points() -> Vec<DataPoint> {
+    let mut result = Vec::new();
+    for i in 0..100 {
+        let x = i as f32 / 10.0;
+        let mut input = Tensor::zeros(Shape::vector(1));
+        input[0] = x;
+        let mut target = Tensor::zeros(Shape::vector(1));
+        target[0] = target_fn(x);
+        result.push(DataPoint { input, target });
+    }
+    result
+}
+
+fn get_loss(network: &Network, data_points: &Vec<DataPoint>) -> f32 {
+    let mut total_loss = 0.0;
+    for data_pt in data_points {
+        total_loss += network.forward_loss(&data_pt.input, &data_pt.target);
+    }
+    total_loss / data_points.len() as f32
+}
+
 fn main() {
     println!("Hello, world!");
 
-    let mut builder = NetworkBuilder::new(3);
-    builder.add_dense_layer(5);
+    let mut builder = NetworkBuilder::new(1);
+    builder.add_dense_layer(10);
     builder.add_relu();
-    builder.add_dense_layer(4);
+    builder.add_dense_layer(8);
     builder.add_relu();
     builder.add_dense_layer(1);
     let mut network = builder.build();
     network.init_rand();
-    let mut inputs = Tensor::zeros(Shape::vector(3));
-    inputs[0] = 5.0;
-    inputs[1] = 3.0;
-    inputs[2] = 1.0;
-    let mut target = Tensor::zeros(Shape::vector(1));
-    target[0] = 3.0;
-    let output = network.forward(&inputs)[0];
-    let loss = network.forward_loss(&inputs, &target);
-    println!("Network output: {}", output);
-    println!("Network loss: {}", loss);
+    let data_points = get_data_points();
 
-    for i in 0..1000 {
+    println!("Network loss: {}", get_loss(&network, &data_points));
+
+    for i in 0..100000 {
         let mut grads = network.zero_grads();
-        network.backward(&inputs, &target, &mut grads);
-        network.update(&grads, 0.01);
+        for data_pt in &data_points {
+            network.backward(&data_pt.input, &data_pt.target, &mut grads);
+        }
+        network.update(&grads, 0.01 / data_points.len() as f32);
 
         if i % 100 == 0 {
-            let new_output = network.forward(&inputs)[0];
-            let new_loss = network.forward_loss(&inputs, &target);
-
             println!("Epoch: {}", i);
-            println!("Network output: {}", new_output);
-            println!("Network loss: {}", new_loss);
+            println!("Network loss: {}", get_loss(&network, &data_points));
         }
+    }
+
+    for data_pt in &data_points {
+        let result = network.forward(&data_pt.input);
+        println!("Input: {}", data_pt.input[0]);
+        println!("    Result: {}", result[0]);
+        println!("    Target: {}", data_pt.target[0]);
     }
 }
