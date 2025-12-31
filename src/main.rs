@@ -1,14 +1,15 @@
 use std::{fs::File, io::Write};
 
 use crate::{
-    layer::DenseLayer,
     network::{Network, NetworkBuilder},
+    optim::Adam,
     tensor::{Shape, Tensor},
 };
 
 mod layer;
 mod loss;
 mod network;
+mod optim;
 mod tensor;
 
 fn target_fn(mut x: f32) -> f32 {
@@ -63,12 +64,14 @@ fn main() {
 
     println!("Network loss: {}", get_loss(&network, &data_points));
 
+    let mut optim = Adam::new(0.01, &network);
+
     for i in 0..100000 {
         let mut grads = network.zero_grads();
         for data_pt in &data_points {
             network.backward(&data_pt.input, &data_pt.target, &mut grads);
         }
-        network.update(&grads, 0.01 / data_points.len() as f32);
+        network.update(&grads, &mut optim, data_points.len() as u32);
 
         if i % 100 == 0 {
             println!("Epoch: {}", i);
