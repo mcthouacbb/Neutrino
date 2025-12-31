@@ -7,7 +7,7 @@ use crate::{
     tensor::{Shape, Tensor},
 };
 
-pub struct NetworkGrads(Vec<Tensor>);
+pub struct NetworkGrads(pub Vec<Tensor>);
 
 pub struct Network {
     layers: Vec<Box<dyn Layer>>,

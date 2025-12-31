@@ -1,4 +1,6 @@
-use crate::optim::Optimizer;
+use std::ops::Range;
+
+use crate::{optim::Optimizer, tensor::Tensor};
 
 pub struct SGD {
     lr: f32,
@@ -6,16 +8,16 @@ pub struct SGD {
 
 impl SGD {
     pub fn new(lr: f32) -> Self {
-        Self { lr: lr }
+        Self { lr }
     }
 }
 
 impl Optimizer for SGD {
     fn update_range(
         &mut self,
-        backwardables: &mut [crate::tensor::Tensor],
-        grads: &[crate::tensor::Tensor],
-        idx_range: std::ops::Range<usize>,
+        backwardables: &mut [Tensor],
+        grads: &[Tensor],
+        idx_range: Range<usize>,
         batch_size: u32,
     ) {
         let lr = self.lr / batch_size as f32;

@@ -1,9 +1,8 @@
 use std::{fs::File, io::Write};
 
 use crate::{
-    layer::DenseLayer,
     network::{Network, NetworkBuilder},
-    optim::SGD,
+    optim::Adam,
     tensor::{Shape, Tensor},
 };
 
@@ -65,7 +64,7 @@ fn main() {
 
     println!("Network loss: {}", get_loss(&network, &data_points));
 
-    let mut optim = SGD::new(0.01);
+    let mut optim = Adam::new(0.01, &network);
 
     for i in 0..100000 {
         let mut grads = network.zero_grads();
