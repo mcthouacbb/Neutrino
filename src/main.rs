@@ -1,5 +1,7 @@
 use std::{fs::File, io::Write};
 
+use rand::seq::SliceRandom;
+
 use crate::{
     network::{Network, NetworkBuilder},
     optim::Adam,
@@ -60,18 +62,22 @@ fn main() {
     builder.add_dense_layer(1);
     let mut network = builder.build();
     network.init_rand();
-    let data_points = get_data_points();
+    let mut data_points = get_data_points();
 
     println!("Network loss: {}", get_loss(&network, &data_points));
 
     let mut optim = Adam::new(0.01, &network);
 
     for i in 0..100000 {
-        let mut grads = network.zero_grads();
-        for data_pt in &data_points {
-            network.backward(&data_pt.input, &data_pt.target, &mut grads);
+        data_points.shuffle(&mut rand::rng());
+        for i in 0..10 {
+            let mut grads = network.zero_grads();
+            let batch = &data_points[10 * i..10 * (i + 1)];
+            for data_pt in batch {
+                network.backward(&data_pt.input, &data_pt.target, &mut grads);
+            }
+            network.update(&grads, &mut optim, data_points.len() as u32);
         }
-        network.update(&grads, &mut optim, data_points.len() as u32);
 
         if i % 100 == 0 {
             println!("Epoch: {}", i);
@@ -79,7 +85,7 @@ fn main() {
         }
     }
 
-    for data_pt in &data_points {
+    for data_pt in &get_data_points() {
         let result = network.forward(&data_pt.input);
         println!("Input: {}", data_pt.input[0]);
         println!("    Result: {}", result[0]);
@@ -90,7 +96,7 @@ fn main() {
     let mut points_file = File::create("points.csv").unwrap();
 
     writeln!(points_file, "x,net,target");
-    for data_pt in &data_points {
+    for data_pt in &get_data_points() {
         let result = network.forward(&data_pt.input);
         writeln!(
             points_file,
