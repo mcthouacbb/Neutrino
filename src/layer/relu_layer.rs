@@ -30,6 +30,14 @@ impl Layer for ReluLayer {
         0
     }
 
+    fn backwardables(&self) -> &[Tensor] {
+        &[]
+    }
+
+    fn backwardables_mut(&mut self) -> &mut [Tensor] {
+        &mut []
+    }
+
     fn zero_grads(&self, grads: &mut [Tensor]) {
         assert!(grads.len() as u32 == self.num_backwardables());
     }

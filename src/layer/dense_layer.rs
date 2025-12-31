@@ -6,8 +6,7 @@ use crate::tensor::{Shape, Tensor};
 pub struct DenseLayer {
     input_size: u32,
     output_size: u32,
-    weights: Tensor,
-    biases: Tensor,
+    backwardables: [Tensor; 2],
     backwardable_idx: u32,
 }
 
@@ -16,26 +15,30 @@ impl DenseLayer {
         Self {
             input_size,
             output_size,
-            weights: Tensor::zeros(Shape::matrix(output_size, input_size)),
-            biases: Tensor::zeros(Shape::vector(output_size)),
+            backwardables: [
+                // weights
+                Tensor::zeros(Shape::matrix(output_size, input_size)),
+                // biases
+                Tensor::zeros(Shape::vector(output_size)),
+            ],
             backwardable_idx: backwardable_idx,
         }
     }
 
     pub fn weights(&self) -> &Tensor {
-        &self.weights
+        &self.backwardables[0]
     }
 
     pub fn weights_mut(&mut self) -> &mut Tensor {
-        &mut self.weights
+        &mut self.backwardables[0]
     }
 
     pub fn biases(&self) -> &Tensor {
-        &self.biases
+        &self.backwardables[1]
     }
 
     pub fn biases_mut(&mut self) -> &mut Tensor {
-        &mut self.biases
+        &mut self.backwardables[1]
     }
 }
 
@@ -49,7 +52,7 @@ impl Layer for DenseLayer {
     }
 
     fn init_rand(&mut self) {
-        for weight in self.weights.elems_mut() {
+        for weight in self.weights_mut().elems_mut() {
             *weight = rand::rng().random_range(-1.0..=1.0);
         }
     }
@@ -62,19 +65,27 @@ impl Layer for DenseLayer {
         self.backwardable_idx
     }
 
+    fn backwardables(&self) -> &[Tensor] {
+        &self.backwardables
+    }
+
+    fn backwardables_mut(&mut self) -> &mut [Tensor] {
+        &mut self.backwardables
+    }
+
     fn zero_grads(&self, grads: &mut [Tensor]) {
         assert!(grads.len() as u32 == self.num_backwardables());
-        grads[0] = Tensor::zeros(*self.weights.shape());
-        grads[1] = Tensor::zeros(*self.biases.shape());
+        grads[0] = Tensor::zeros(*self.weights().shape());
+        grads[1] = Tensor::zeros(*self.biases().shape());
     }
 
     fn forward(&self, inputs: &Tensor) -> Tensor {
         assert!(*inputs.shape() == Shape::vector(self.input_size()));
 
-        let mut result = self.biases.clone();
+        let mut result = self.biases().clone();
         for i in 0..self.output_size {
             for j in 0..self.input_size {
-                result[i] += inputs[j] * self.weights[(i, j)];
+                result[i] += inputs[j] * self.weights()[(i, j)];
             }
         }
         result
@@ -101,7 +112,7 @@ impl Layer for DenseLayer {
         let mut input_grads = Tensor::zeros(Shape::vector(self.input_size));
         for j in 0..self.input_size {
             for i in 0..self.output_size {
-                input_grads[j] += output_grads[i] * self.weights[(i, j)];
+                input_grads[j] += output_grads[i] * self.weights()[(i, j)];
             }
         }
         input_grads

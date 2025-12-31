@@ -1,6 +1,9 @@
+use std::sync::atomic::AtomicU32;
+
 use crate::{
     layer::{DenseLayer, Layer, ReluLayer},
     loss::{Loss, Mse},
+    optim::Optimizer,
     tensor::{Shape, Tensor},
 };
 
@@ -56,9 +59,15 @@ impl Network {
         }
     }
 
-    pub fn update(&mut self, grads: &NetworkGrads, lr: f32) {
+    pub fn update(&mut self, grads: &NetworkGrads, optim: &mut dyn Optimizer, batch_size: u32) {
         for layer in self.layers.iter_mut() {
-            layer.update(&grads.0[layer.grad_idx_range()], lr);
+            let grad_idx_range = layer.grad_idx_range();
+            optim.update_range(
+                layer.backwardables_mut(),
+                &grads.0[grad_idx_range.clone()],
+                grad_idx_range,
+                batch_size,
+            );
         }
     }
 

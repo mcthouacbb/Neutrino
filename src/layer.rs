@@ -14,6 +14,8 @@ pub trait Layer {
     fn init_rand(&mut self);
     fn num_backwardables(&self) -> u32;
     fn backwardable_idx(&self) -> u32;
+    fn backwardables(&self) -> &[Tensor];
+    fn backwardables_mut(&mut self) -> &mut [Tensor];
     fn grad_idx_range(&self) -> Range<usize> {
         (self.backwardable_idx() as usize)
             ..((self.backwardable_idx() + self.num_backwardables()) as usize)
