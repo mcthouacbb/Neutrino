@@ -15,7 +15,6 @@ mod optim;
 mod tensor;
 
 fn target_fn(mut x: f32) -> f32 {
-    x = x / 10.0;
     if x <= 0.0 {
         0.0
     } else if x >= 1.0 {
@@ -33,7 +32,7 @@ struct DataPoint {
 fn get_data_points() -> Vec<DataPoint> {
     let mut result = Vec::new();
     for i in 0..100 {
-        let x = i as f32 / 10.0;
+        let x = i as f32 / 100.0;
         let mut input = Tensor::zeros(Shape::vector(1));
         input[0] = x;
         let mut target = Tensor::zeros(Shape::vector(1));
