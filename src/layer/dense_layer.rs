@@ -52,8 +52,9 @@ impl Layer for DenseLayer {
     }
 
     fn init_rand(&mut self) {
+        let bound = (6.0 / self.input_size as f32).sqrt();
         for weight in self.weights_mut().elems_mut() {
-            *weight = rand::rng().random_range(-1.0..=1.0);
+            *weight = rand::rng().random_range(-bound..=bound);
         }
     }
 
