@@ -1,7 +1,9 @@
 mod adam;
+mod adamw;
 mod sgd;
 
 pub use adam::*;
+pub use adamw::*;
 pub use sgd::*;
 
 use std::ops::Range;

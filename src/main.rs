@@ -4,7 +4,7 @@ use rand::seq::SliceRandom;
 
 use crate::{
     network::{Network, NetworkBuilder},
-    optim::Adam,
+    optim::{Adam, AdamW},
     tensor::{Shape, Tensor},
 };
 
@@ -66,7 +66,7 @@ fn main() {
 
     println!("Network loss: {}", get_loss(&network, &data_points));
 
-    let mut optim = Adam::new(0.01, &network);
+    let mut optim = AdamW::new(0.01, 0.003, &network);
 
     for i in 0..100000 {
         data_points.shuffle(&mut rand::rng());
