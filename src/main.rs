@@ -25,10 +25,10 @@ struct DataPoint {
     target: Tensor,
 }
 
-fn max_index(t: &Tensor) -> usize {
+fn max_index(t: &[f32]) -> usize {
     let mut max_val = -1.0;
     let mut max_idx = 0;
-    for (idx, val) in t.elems().iter().enumerate() {
+    for (idx, val) in t.iter().enumerate() {
         if *val > max_val {
             max_idx = idx;
             max_val = *val;
@@ -37,13 +37,13 @@ fn max_index(t: &Tensor) -> usize {
     max_idx
 }
 
-fn print_network_stats(network: &Network, dataset: &Vec<DataPoint>) {
+fn print_network_stats(network: &mut Network, dataset: &Vec<DataPoint>) {
     let mut total_loss = 0.0;
     let mut total_correct = 0;
     for data_pt in dataset {
-        let (outputs, loss) = network.forward_all_loss(&data_pt.input, &data_pt.target);
+        let (output, loss) = network.forward_inference(&data_pt.input, &data_pt.target);
         total_loss += loss;
-        if max_index(outputs.last().unwrap()) == max_index(&data_pt.target) {
+        if max_index(&output) == max_index(&data_pt.target.elems()) {
             total_correct += 1;
         }
     }
@@ -142,7 +142,7 @@ fn main() {
     let mut network = builder.build();
     network.init_rand();
 
-    print_network_stats(&network, &dataset);
+    print_network_stats(&mut network, &dataset);
 
     let mut optim = AdamW::new(0.01, 0.003, &network);
 
@@ -156,14 +156,13 @@ fn main() {
 
         let bar = ProgressBar::new(num_batches as u64);
         for i in 0..dataset.len() as u32 / BATCH_SIZE {
-            let mut grads = network.zero_grads();
             let begin = (i * BATCH_SIZE) as usize;
             let end = ((i + 1) * BATCH_SIZE) as usize;
             let batch = &dataset[begin..end];
             for data_pt in batch {
-                network.backward(&data_pt.input, &data_pt.target, &mut grads);
+                network.backward(&data_pt.input, &data_pt.target);
             }
-            network.update(&grads, &mut optim, BATCH_SIZE);
+            network.update(&mut optim, BATCH_SIZE);
 
             bar.inc(1);
         }
@@ -180,6 +179,6 @@ fn main() {
             num_batches as f64 / seconds,
             (num_batches * BATCH_SIZE) as f64 / seconds
         );
-        print_network_stats(&network, &dataset);
+        print_network_stats(&mut network, &dataset);
     }
 }

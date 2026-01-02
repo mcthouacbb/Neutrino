@@ -1,5 +1,3 @@
-use crate::tensor::{Shape, Tensor};
-
 pub struct ReluLayer {
     size: u32,
 }
@@ -13,23 +11,26 @@ impl ReluLayer {
         self.size
     }
 
-    pub fn forward(&self, inputs: &Tensor) -> Tensor {
-        assert!(*inputs.shape() == Shape::vector(self.size()));
+    pub fn forward(&self, inputs: &[f32], outputs: &mut [f32]) {
+        assert!(inputs.len() == self.size as usize);
+        assert!(outputs.len() == self.size as usize);
 
-        let mut result = inputs.clone();
-        for i in 0..result.shape().dim(0) {
-            result[i] = result[i].max(0.0);
+        for i in 0..self.size as usize {
+            outputs[i] = inputs[i].max(0.0);
         }
-        result
     }
 
-    pub fn backward(&self, output_grads: &Tensor, inputs: &Tensor) -> Tensor {
-        let mut input_grads = output_grads.clone();
-        for i in 0..self.size {
+    pub fn backward(&self, output_grads: &[f32], inputs: &[f32], input_grads: &mut [f32]) {
+        assert!(output_grads.len() == self.size as usize);
+        assert!(inputs.len() == self.size as usize);
+        assert!(input_grads.len() == self.size as usize);
+
+        for i in 0..self.size as usize {
             if inputs[i] < 0.0 {
                 input_grads[i] = 0.0;
+            } else {
+                input_grads[i] = output_grads[i];
             }
         }
-        input_grads
     }
 }

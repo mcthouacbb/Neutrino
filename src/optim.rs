@@ -6,16 +6,6 @@ pub use adam::*;
 pub use adamw::*;
 pub use sgd::*;
 
-use std::ops::Range;
-
-use crate::tensor::Tensor;
-
 pub trait Optimizer {
-    fn update_range(
-        &mut self,
-        backwardables: &mut [Tensor],
-        grads: &[Tensor],
-        idx_range: Range<usize>,
-        batch_size: u32,
-    );
+    fn update(&mut self, params: &mut [f32], grads: &[f32], batch_size: u32);
 }

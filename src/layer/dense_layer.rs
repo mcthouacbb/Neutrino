@@ -2,44 +2,19 @@ use std::ops::Range;
 
 use rand::Rng;
 
-use crate::tensor::{Shape, Tensor};
-
 pub struct DenseLayer {
     input_size: u32,
     output_size: u32,
-    backwardables: [Tensor; 2],
-    backwardable_idx: u32,
+    buffer_offset: u32,
 }
 
 impl DenseLayer {
-    pub fn new(input_size: u32, output_size: u32, backwardable_idx: u32) -> Self {
+    pub fn new(input_size: u32, output_size: u32, buffer_offset: u32) -> Self {
         Self {
             input_size,
             output_size,
-            backwardables: [
-                // weights
-                Tensor::zeros(Shape::matrix(output_size, input_size)),
-                // biases
-                Tensor::zeros(Shape::vector(output_size)),
-            ],
-            backwardable_idx: backwardable_idx,
+            buffer_offset,
         }
-    }
-
-    pub fn weights(&self) -> &Tensor {
-        &self.backwardables[0]
-    }
-
-    pub fn weights_mut(&mut self) -> &mut Tensor {
-        &mut self.backwardables[0]
-    }
-
-    pub fn biases(&self) -> &Tensor {
-        &self.backwardables[1]
-    }
-
-    pub fn biases_mut(&mut self) -> &mut Tensor {
-        &mut self.backwardables[1]
     }
 
     pub fn input_size(&self) -> u32 {
@@ -50,86 +25,82 @@ impl DenseLayer {
         self.output_size
     }
 
-    pub fn init_rand(&mut self) {
+    fn num_weights(&self) -> u32 {
+        self.input_size * self.output_size
+    }
+
+    fn num_biases(&self) -> u32 {
+        self.output_size
+    }
+
+    pub fn num_params(&self) -> u32 {
+        self.num_weights() + self.num_biases()
+    }
+
+    pub fn param_buffer_range(&self) -> Range<usize> {
+        self.buffer_offset as usize..(self.buffer_offset + self.num_params()) as usize
+    }
+
+    pub fn init_rand(&self, param_buffer: &mut [f32]) {
+        assert!(param_buffer.len() == self.num_params() as usize);
+
         let bound = (6.0 / self.input_size as f32).sqrt();
-        for weight in self.weights_mut().elems_mut() {
+        for weight in &mut param_buffer[0..self.num_weights() as usize] {
             *weight = rand::rng().random_range(-bound..=bound);
         }
     }
 
-    pub fn num_backwardables(&self) -> u32 {
-        2
-    }
+    pub fn forward(&self, param_buffer: &[f32], inputs: &[f32], outputs: &mut [f32]) {
+        assert!(param_buffer.len() == self.num_params() as usize);
+        assert!(inputs.len() == self.input_size as usize);
+        assert!(outputs.len() == self.output_size as usize);
 
-    pub fn backwardable_idx(&self) -> u32 {
-        self.backwardable_idx
-    }
+        let (weights, biases) = param_buffer.split_at(self.num_weights() as usize);
 
-    pub fn grad_idx_range(&self) -> Range<usize> {
-        (self.backwardable_idx() as usize)
-            ..((self.backwardable_idx() + self.num_backwardables()) as usize)
-    }
-
-    pub fn backwardables(&self) -> &[Tensor] {
-        &self.backwardables
-    }
-
-    pub fn backwardables_mut(&mut self) -> &mut [Tensor] {
-        &mut self.backwardables
-    }
-
-    pub fn zero_grads(&self, grads: &mut [Tensor]) {
-        assert!(grads.len() as u32 == self.num_backwardables());
-        grads[0] = Tensor::zeros(*self.weights().shape());
-        grads[1] = Tensor::zeros(*self.biases().shape());
-    }
-
-    pub fn forward(&self, inputs: &Tensor) -> Tensor {
-        assert!(*inputs.shape() == Shape::vector(self.input_size()));
-
-        let mut result = self.biases().clone();
-        for i in 0..self.output_size {
-            for j in 0..self.input_size {
-                result[i] += inputs[j] * self.weights()[(i, j)];
+        for i in 0..self.output_size as usize {
+            outputs[i] = biases[i];
+            for j in 0..self.input_size as usize {
+                outputs[i] += inputs[j] * weights[i * self.input_size as usize + j];
             }
         }
-        result
     }
 
     pub fn backward(
         &self,
-        output_grads: &Tensor,
-        inputs: &Tensor,
-        result_grads: &mut [Tensor],
-    ) -> Tensor {
+        param_buffer: &[f32],
+        output_grads: &[f32],
+        inputs: &[f32],
+        result_grads: &mut [f32],
+        input_grads: &mut [f32],
+    ) {
+        assert!(param_buffer.len() == self.num_params() as usize);
+        assert!(output_grads.len() == self.output_size as usize);
+        assert!(inputs.len() == self.input_size as usize);
+        assert!(result_grads.len() == self.num_params() as usize);
+        assert!(input_grads.len() == self.input_size as usize);
+
+        let (weights, biases) = param_buffer.split_at(self.num_weights() as usize);
+
+        let (weight_grads, bias_grads) = result_grads.split_at_mut(self.num_weights() as usize);
+
         // bias gradients
-        for i in 0..self.output_size {
-            result_grads[1][i] += output_grads[i];
+        for i in 0..self.output_size as usize {
+            bias_grads[i] += output_grads[i];
         }
 
         // weight gradients
-        for i in 0..self.output_size {
-            for j in 0..self.input_size {
-                result_grads[0][(i, j)] += inputs[j] * output_grads[i];
+        for i in 0..self.output_size as usize {
+            for j in 0..self.input_size as usize {
+                weight_grads[i * self.input_size as usize + j] += inputs[j] * output_grads[i];
             }
         }
 
-        let mut input_grads = Tensor::zeros(Shape::vector(self.input_size));
-        for j in 0..self.input_size {
-            for i in 0..self.output_size {
-                input_grads[j] += output_grads[i] * self.weights()[(i, j)];
+        for j in 0..self.input_size as usize {
+            // this may not be necessary
+            input_grads[j] = 0.0;
+            for i in 0..self.output_size as usize {
+                input_grads[j] += output_grads[i] * weights[i * self.input_size as usize + j];
             }
-        }
-        input_grads
-    }
-
-    pub fn update(&mut self, grads: &[Tensor], lr: f32) {
-        for i in 0..self.output_size * self.input_size {
-            self.weights_mut().elems_mut()[i as usize] -= lr * grads[0].elems()[i as usize];
-        }
-
-        for i in 0..self.output_size {
-            self.biases_mut().elems_mut()[i as usize] -= lr * grads[1].elems()[i as usize];
         }
     }
 }
