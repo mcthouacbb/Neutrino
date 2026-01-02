@@ -1,4 +1,3 @@
-use super::Layer;
 use crate::tensor::{Shape, Tensor};
 
 pub struct ReluLayer {
@@ -9,41 +8,13 @@ impl ReluLayer {
     pub fn new(size: u32) -> Self {
         Self { size }
     }
-}
 
-impl Layer for ReluLayer {
-    fn input_size(&self) -> u32 {
+    pub fn size(&self) -> u32 {
         self.size
     }
 
-    fn output_size(&self) -> u32 {
-        self.size
-    }
-
-    fn init_rand(&mut self) {}
-
-    fn num_backwardables(&self) -> u32 {
-        0
-    }
-
-    fn backwardable_idx(&self) -> u32 {
-        0
-    }
-
-    fn backwardables(&self) -> &[Tensor] {
-        &[]
-    }
-
-    fn backwardables_mut(&mut self) -> &mut [Tensor] {
-        &mut []
-    }
-
-    fn zero_grads(&self, grads: &mut [Tensor]) {
-        assert!(grads.len() as u32 == self.num_backwardables());
-    }
-
-    fn forward(&self, inputs: &Tensor) -> Tensor {
-        assert!(*inputs.shape() == Shape::vector(self.input_size()));
+    pub fn forward(&self, inputs: &Tensor) -> Tensor {
+        assert!(*inputs.shape() == Shape::vector(self.size()));
 
         let mut result = inputs.clone();
         for i in 0..result.shape().dim(0) {
@@ -52,12 +23,7 @@ impl Layer for ReluLayer {
         result
     }
 
-    fn backward(
-        &self,
-        output_grads: &Tensor,
-        inputs: &Tensor,
-        result_grads: &mut [Tensor],
-    ) -> Tensor {
+    pub fn backward(&self, output_grads: &Tensor, inputs: &Tensor) -> Tensor {
         let mut input_grads = output_grads.clone();
         for i in 0..self.size {
             if inputs[i] < 0.0 {
@@ -66,6 +32,4 @@ impl Layer for ReluLayer {
         }
         input_grads
     }
-
-    fn update(&mut self, grads: &[Tensor], lr: f32) {}
 }

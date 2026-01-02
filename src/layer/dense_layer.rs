@@ -1,6 +1,7 @@
+use std::ops::Range;
+
 use rand::Rng;
 
-use super::Layer;
 use crate::tensor::{Shape, Tensor};
 
 pub struct DenseLayer {
@@ -40,47 +41,50 @@ impl DenseLayer {
     pub fn biases_mut(&mut self) -> &mut Tensor {
         &mut self.backwardables[1]
     }
-}
 
-impl Layer for DenseLayer {
-    fn input_size(&self) -> u32 {
+    pub fn input_size(&self) -> u32 {
         self.input_size
     }
 
-    fn output_size(&self) -> u32 {
+    pub fn output_size(&self) -> u32 {
         self.output_size
     }
 
-    fn init_rand(&mut self) {
+    pub fn init_rand(&mut self) {
         let bound = (6.0 / self.input_size as f32).sqrt();
         for weight in self.weights_mut().elems_mut() {
             *weight = rand::rng().random_range(-bound..=bound);
         }
     }
 
-    fn num_backwardables(&self) -> u32 {
+    pub fn num_backwardables(&self) -> u32 {
         2
     }
 
-    fn backwardable_idx(&self) -> u32 {
+    pub fn backwardable_idx(&self) -> u32 {
         self.backwardable_idx
     }
 
-    fn backwardables(&self) -> &[Tensor] {
+    pub fn grad_idx_range(&self) -> Range<usize> {
+        (self.backwardable_idx() as usize)
+            ..((self.backwardable_idx() + self.num_backwardables()) as usize)
+    }
+
+    pub fn backwardables(&self) -> &[Tensor] {
         &self.backwardables
     }
 
-    fn backwardables_mut(&mut self) -> &mut [Tensor] {
+    pub fn backwardables_mut(&mut self) -> &mut [Tensor] {
         &mut self.backwardables
     }
 
-    fn zero_grads(&self, grads: &mut [Tensor]) {
+    pub fn zero_grads(&self, grads: &mut [Tensor]) {
         assert!(grads.len() as u32 == self.num_backwardables());
         grads[0] = Tensor::zeros(*self.weights().shape());
         grads[1] = Tensor::zeros(*self.biases().shape());
     }
 
-    fn forward(&self, inputs: &Tensor) -> Tensor {
+    pub fn forward(&self, inputs: &Tensor) -> Tensor {
         assert!(*inputs.shape() == Shape::vector(self.input_size()));
 
         let mut result = self.biases().clone();
@@ -92,7 +96,7 @@ impl Layer for DenseLayer {
         result
     }
 
-    fn backward(
+    pub fn backward(
         &self,
         output_grads: &Tensor,
         inputs: &Tensor,
@@ -119,7 +123,7 @@ impl Layer for DenseLayer {
         input_grads
     }
 
-    fn update(&mut self, grads: &[Tensor], lr: f32) {
+    pub fn update(&mut self, grads: &[Tensor], lr: f32) {
         for i in 0..self.output_size * self.input_size {
             self.weights_mut().elems_mut()[i as usize] -= lr * grads[0].elems()[i as usize];
         }
