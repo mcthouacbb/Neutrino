@@ -1,8 +1,10 @@
 use std::{
     fs::{self, File},
     io::{self, Write},
+    time::Instant,
 };
 
+use indicatif::ProgressBar;
 use rand::seq::SliceRandom;
 
 use crate::{
@@ -149,10 +151,11 @@ fn main() {
     dataset.shuffle(&mut rand::rng());
 
     for i in 0..100000 {
+        let num_batches = dataset.len() as u32 / BATCH_SIZE;
+        let start_time = Instant::now();
+
+        let bar = ProgressBar::new(num_batches as u64);
         for i in 0..dataset.len() as u32 / BATCH_SIZE {
-            if (i + 1) * BATCH_SIZE > dataset.len() as u32 {
-                continue;
-            }
             let mut grads = network.zero_grads();
             let begin = (i * BATCH_SIZE) as usize;
             let end = ((i + 1) * BATCH_SIZE) as usize;
@@ -161,11 +164,22 @@ fn main() {
                 network.backward(&data_pt.input, &data_pt.target, &mut grads);
             }
             network.update(&grads, &mut optim, BATCH_SIZE);
+
+            bar.inc(1);
         }
 
-        // if i % 100 == 0 {
+        let end_time = Instant::now();
+
+        bar.finish();
+
+        let seconds = (end_time - start_time).as_secs_f64();
         println!("Epoch: {}", i);
+        println!("time: {}", seconds);
+        println!(
+            "batches/s: {}, samples/s: {}",
+            num_batches as f64 / seconds,
+            (num_batches * BATCH_SIZE) as f64 / seconds
+        );
         print_network_stats(&network, &dataset);
-        // }
     }
 }
