@@ -3,4 +3,5 @@ name = "neutrino"
 edition = "2024"
 
 [dependencies]
+indicatif = "0.18.3"
 rand = "0.9.2"
