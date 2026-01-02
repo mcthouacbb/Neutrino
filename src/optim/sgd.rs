@@ -1,6 +1,4 @@
-use std::ops::Range;
-
-use crate::{optim::Optimizer, tensor::Tensor};
+use crate::optim::Optimizer;
 
 pub struct SGD {
     lr: f32,

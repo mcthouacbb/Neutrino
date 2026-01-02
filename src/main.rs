@@ -1,28 +1,22 @@
-use std::{
-    fs::{self, File},
-    io::{self, Write},
-    time::Instant,
-};
+use std::{fs, time::Instant};
 
 use indicatif::ProgressBar;
 use rand::seq::SliceRandom;
 
 use crate::{
     network::{Network, NetworkBuilder},
-    optim::{Adam, AdamW},
-    tensor::{Shape, Tensor},
+    optim::AdamW,
 };
 
 mod layer;
 mod loss;
 mod network;
 mod optim;
-mod tensor;
 
 #[derive(Clone)]
 struct DataPoint {
-    input: Tensor,
-    target: Tensor,
+    input: Vec<f32>,
+    target: Vec<f32>,
 }
 
 fn max_index(t: &[f32]) -> usize {
@@ -43,7 +37,7 @@ fn print_network_stats(network: &mut Network, dataset: &Vec<DataPoint>) {
     for data_pt in dataset {
         let (output, loss) = network.forward_inference(&data_pt.input, &data_pt.target);
         total_loss += loss;
-        if max_index(&output) == max_index(&data_pt.target.elems()) {
+        if max_index(&output) == max_index(&data_pt.target) {
             total_correct += 1;
         }
     }
@@ -106,20 +100,20 @@ fn load_mnist_dataset(image_file: &str, label_file: &str) -> Option<Vec<DataPoin
 
     let mut result = Vec::new();
     for i in 0..num_images {
-        let mut input = Tensor::zeros(Shape::vector(image_width * image_height));
+        let mut input = vec![0.0; (image_width * image_height) as usize];
         let image_data_base_idx = 16 + i * image_width * image_height;
         for y in 0..image_height {
             for x in 0..image_width {
                 let offset = y * image_width + x;
                 let image_data_idx = image_data_base_idx + offset;
-                input[offset] = image_data[image_data_idx as usize] as f32 / 255.0;
+                input[offset as usize] = image_data[image_data_idx as usize] as f32 / 255.0;
             }
         }
 
-        let mut target = Tensor::zeros(Shape::vector(10));
+        let mut target = vec![0.0; 10];
         let label_data_idx = 8 + i;
         // one-hot encoding
-        target[label_data[label_data_idx as usize] as u32] = 1.0;
+        target[label_data[label_data_idx as usize] as usize] = 1.0;
 
         result.push(DataPoint { input, target })
     }

@@ -1,15 +1,8 @@
-use std::sync::atomic::AtomicU32;
-
-use rand::Fill;
-
 use crate::{
     layer::{DenseLayer, Layer, ReluLayer},
     loss::{Loss, Mse},
     optim::Optimizer,
-    tensor::{Shape, Tensor},
 };
-
-pub struct NetworkGrads(pub Vec<Tensor>);
 
 pub struct Network {
     param_buffer: Vec<f32>,
@@ -66,17 +59,17 @@ impl Network {
         loss
     }
 
-    pub fn forward_inference(&mut self, inputs: &Tensor, targets: &Tensor) -> (Vec<f32>, f32) {
-        let loss = self.forward_all_loss(inputs.elems(), targets.elems());
+    pub fn forward_inference(&mut self, inputs: &[f32], targets: &[f32]) -> (Vec<f32>, f32) {
+        let loss = self.forward_all_loss(inputs, targets);
         (self.value_buffer.last().unwrap().clone(), loss)
     }
 
-    pub fn backward(&mut self, inputs: &Tensor, targets: &Tensor) {
-        self.forward_all(inputs.elems());
+    pub fn backward(&mut self, inputs: &[f32], targets: &[f32]) {
+        self.forward_all(inputs);
 
         self.loss_fn.backward(
             self.value_buffer.last().unwrap(),
-            targets.elems(),
+            targets,
             self.value_grad_buffer.last_mut().unwrap(),
         );
         for (idx, layer) in self.layers.iter().enumerate().rev() {

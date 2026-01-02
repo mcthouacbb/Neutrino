@@ -1,6 +1,4 @@
-use std::ops::Range;
-
-use crate::{network::Network, optim::Optimizer, tensor::Tensor};
+use crate::{network::Network, optim::Optimizer};
 
 pub struct Adam {
     lr: f32,
