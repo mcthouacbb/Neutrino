@@ -141,7 +141,7 @@ fn main() {
 
     const BATCH_SIZE: u32 = 16;
 
-    let mut trainer = Trainer::new(network);
+    let mut trainer = Trainer::new(network, BATCH_SIZE);
 
     print_network_stats(&mut trainer, &dataset);
 
@@ -156,11 +156,7 @@ fn main() {
             let begin = (i * BATCH_SIZE) as usize;
             let end = ((i + 1) * BATCH_SIZE) as usize;
             let batch = &dataset[begin..end];
-            for data_pt in batch {
-                trainer.backward(&data_pt.input, &data_pt.target);
-            }
-            trainer.update(BATCH_SIZE);
-
+            trainer.run_batch(batch);
             bar.inc(1);
         }
 

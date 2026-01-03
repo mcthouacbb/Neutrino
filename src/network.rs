@@ -25,6 +25,7 @@ impl Network {
                         &self.param_buffer[dense_layer.param_buffer_range()],
                         &input_buffer,
                         &mut output_buffer,
+                        1,
                     );
 
                     input_buffer.resize(output_buffer.len(), 0.0);
@@ -32,7 +33,7 @@ impl Network {
                 }
                 Layer::ReLu(relu_layer) => {
                     output_buffer.resize(relu_layer.size() as usize, 0.0);
-                    relu_layer.forward(&input_buffer, &mut output_buffer);
+                    relu_layer.forward(&input_buffer, &mut output_buffer, 1);
 
                     input_buffer.resize(output_buffer.len(), 0.0);
                     input_buffer.copy_from_slice(&output_buffer);

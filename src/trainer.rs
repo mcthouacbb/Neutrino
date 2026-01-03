@@ -1,4 +1,5 @@
 use crate::{
+    DataPoint,
     layer::Layer,
     loss::{Loss, Mse},
     network::Network,
@@ -7,28 +8,35 @@ use crate::{
 
 pub struct Trainer {
     network: Network,
+    batch_size: u32,
     param_grad_buffer: Vec<f32>,
     value_buffer: Vec<Vec<f32>>,
     value_grad_buffer: Vec<Vec<f32>>,
+    target_buffer: Vec<f32>,
     loss_fn: Box<dyn Loss>,
     optimizer: Box<dyn Optimizer>,
 }
 
 impl Trainer {
-    pub fn new(network: Network) -> Self {
+    pub fn new(network: Network, batch_size: u32) -> Self {
         let mut value_buffer = Vec::with_capacity(network.layers().len() + 1);
-        value_buffer.push(vec![0.0; network.layers()[0].input_size() as usize]);
+        value_buffer.push(vec![
+            0.0;
+            (batch_size * network.layers()[0].input_size()) as usize
+        ]);
         for layer in network.layers() {
-            value_buffer.push(vec![0.0; layer.output_size() as usize]);
+            value_buffer.push(vec![0.0; (batch_size * layer.output_size()) as usize]);
         }
 
         let optimizer = AdamW::new(0.01, 0.003, &network);
         let num_params = network.num_params();
         Self {
             network: network,
+            batch_size,
             param_grad_buffer: vec![0.0; num_params as usize],
             value_buffer: value_buffer.clone(),
-            value_grad_buffer: value_buffer,
+            value_grad_buffer: value_buffer.clone(),
+            target_buffer: value_buffer.last().unwrap().clone(),
             loss_fn: Box::new(Mse::new()),
             optimizer: Box::new(optimizer),
         }
@@ -42,8 +50,27 @@ impl Trainer {
         self.loss_fn.as_ref()
     }
 
-    fn forward_all(&mut self, inputs: &[f32]) {
-        self.value_buffer[0].copy_from_slice(inputs);
+    pub fn run_batch(&mut self, batch: &[DataPoint]) {
+        assert!(batch.len() == self.batch_size as usize);
+
+        for (idx, data_pt) in batch.iter().enumerate() {
+            self.value_buffer[0][idx * data_pt.input.len()..(idx + 1) * data_pt.input.len()]
+                .copy_from_slice(&data_pt.input);
+        }
+
+        self.forward_all();
+
+        let output_size = self.network.layers().last().unwrap().output_size();
+        for (idx, data_pt) in batch.iter().enumerate() {
+            self.target_buffer[idx * output_size as usize..(idx + 1) * output_size as usize]
+                .copy_from_slice(&data_pt.target);
+        }
+        self.backward();
+        self.update(batch.len() as u32);
+    }
+
+    fn forward_all(&mut self) {
+        // value_buffer[0] needs to be pre-filled with all the inputs
 
         for (idx, layer) in self.network.layers().iter().enumerate() {
             let (left, right) = self.value_buffer.split_at_mut(idx + 1);
@@ -54,20 +81,19 @@ impl Trainer {
                     &self.network.param_buffer()[dense_layer.param_buffer_range()],
                     inputs,
                     outputs,
+                    self.batch_size,
                 ),
                 Layer::ReLu(relu_layer) => {
-                    relu_layer.forward(inputs, outputs);
+                    relu_layer.forward(inputs, outputs, self.batch_size);
                 }
             }
         }
     }
 
-    pub fn backward(&mut self, inputs: &[f32], targets: &[f32]) {
-        self.forward_all(inputs);
-
+    fn backward(&mut self) {
         self.loss_fn.backward(
             self.value_buffer.last().unwrap(),
-            targets,
+            &self.target_buffer,
             self.value_grad_buffer.last_mut().unwrap(),
         );
         for (idx, layer) in self.network.layers().iter().enumerate().rev() {
@@ -86,21 +112,26 @@ impl Trainer {
                         &self.value_buffer[idx],
                         layer_grads,
                         input_grads,
+                        self.batch_size,
                     );
                 }
                 Layer::ReLu(relu_layer) => {
-                    relu_layer.backward(output_grads, &self.value_buffer[idx], input_grads);
+                    relu_layer.backward(
+                        output_grads,
+                        &self.value_buffer[idx],
+                        input_grads,
+                        self.batch_size,
+                    );
                 }
             }
         }
     }
 
-    pub fn update(&mut self, batch_size: u32) {
+    fn update(&mut self, batch_size: u32) {
         self.optimizer.update(
             &mut self.network.param_buffer_mut(),
             &self.param_grad_buffer,
             batch_size,
         );
-        self.param_grad_buffer.fill(0.0);
     }
 }

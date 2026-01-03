@@ -50,17 +50,27 @@ impl DenseLayer {
         }
     }
 
-    pub fn forward(&self, param_buffer: &[f32], inputs: &[f32], outputs: &mut [f32]) {
+    pub fn forward(
+        &self,
+        param_buffer: &[f32],
+        inputs: &[f32],
+        outputs: &mut [f32],
+        batch_size: u32,
+    ) {
         assert!(param_buffer.len() == self.num_params() as usize);
-        assert!(inputs.len() == self.input_size as usize);
-        assert!(outputs.len() == self.output_size as usize);
+        assert!(inputs.len() == (self.input_size * batch_size) as usize);
+        assert!(outputs.len() == (self.output_size * batch_size) as usize);
 
         let (weights, biases) = param_buffer.split_at(self.num_weights() as usize);
 
-        for i in 0..self.output_size as usize {
-            outputs[i] = biases[i];
-            for j in 0..self.input_size as usize {
-                outputs[i] += inputs[j] * weights[i * self.input_size as usize + j];
+        for i in 0..batch_size as usize {
+            for j in 0..self.output_size as usize {
+                outputs[i * self.output_size as usize + j] = biases[j];
+                for k in 0..self.input_size as usize {
+                    outputs[i * self.output_size as usize + j] += inputs
+                        [i * self.input_size as usize + k]
+                        * weights[j * self.input_size as usize + k];
+                }
             }
         }
     }
@@ -72,34 +82,47 @@ impl DenseLayer {
         inputs: &[f32],
         result_grads: &mut [f32],
         input_grads: &mut [f32],
+        batch_size: u32,
     ) {
         assert!(param_buffer.len() == self.num_params() as usize);
-        assert!(output_grads.len() == self.output_size as usize);
-        assert!(inputs.len() == self.input_size as usize);
+        assert!(output_grads.len() == (batch_size * self.output_size) as usize);
+        assert!(inputs.len() == (batch_size * self.input_size) as usize);
         assert!(result_grads.len() == self.num_params() as usize);
-        assert!(input_grads.len() == self.input_size as usize);
+        assert!(input_grads.len() == (batch_size * self.input_size) as usize);
 
         let (weights, biases) = param_buffer.split_at(self.num_weights() as usize);
 
         let (weight_grads, bias_grads) = result_grads.split_at_mut(self.num_weights() as usize);
 
-        // bias gradients
-        for i in 0..self.output_size as usize {
-            bias_grads[i] += output_grads[i];
-        }
+        bias_grads.fill(0.0);
+        weight_grads.fill(0.0);
+        input_grads.fill(0.0);
 
-        // weight gradients
-        for i in 0..self.output_size as usize {
-            for j in 0..self.input_size as usize {
-                weight_grads[i * self.input_size as usize + j] += inputs[j] * output_grads[i];
+        // bias gradients
+        for i in 0..batch_size as usize {
+            for j in 0..self.output_size as usize {
+                bias_grads[j] += output_grads[i * self.output_size as usize + j];
             }
         }
 
-        for j in 0..self.input_size as usize {
-            // this may not be necessary
-            input_grads[j] = 0.0;
-            for i in 0..self.output_size as usize {
-                input_grads[j] += output_grads[i] * weights[i * self.input_size as usize + j];
+        // weight gradients
+        for i in 0..batch_size as usize {
+            for j in 0..self.output_size as usize {
+                for k in 0..self.input_size as usize {
+                    weight_grads[j * self.input_size as usize + k] += inputs
+                        [i * self.input_size as usize + k]
+                        * output_grads[i * self.output_size as usize + j];
+                }
+            }
+        }
+
+        for i in 0..batch_size as usize {
+            for j in 0..self.output_size as usize {
+                for k in 0..self.input_size as usize {
+                    input_grads[i * self.input_size as usize + k] += output_grads
+                        [i * self.output_size as usize + j]
+                        * weights[j * self.input_size as usize + k];
+                }
             }
         }
     }
