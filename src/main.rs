@@ -6,12 +6,14 @@ use rand::seq::SliceRandom;
 use crate::{
     network::{Network, NetworkBuilder},
     optim::AdamW,
+    trainer::Trainer,
 };
 
 mod layer;
 mod loss;
 mod network;
 mod optim;
+mod trainer;
 
 #[derive(Clone)]
 struct DataPoint {
@@ -31,11 +33,12 @@ fn max_index(t: &[f32]) -> usize {
     max_idx
 }
 
-fn print_network_stats(network: &mut Network, dataset: &Vec<DataPoint>) {
+fn print_network_stats(trainer: &mut Trainer, dataset: &Vec<DataPoint>) {
     let mut total_loss = 0.0;
     let mut total_correct = 0;
     for data_pt in dataset {
-        let (output, loss) = network.forward_inference(&data_pt.input, &data_pt.target);
+        let output = trainer.network().forward_inference(&data_pt.input);
+        let loss = trainer.loss_fn().forward(&output, &data_pt.target);
         total_loss += loss;
         if max_index(&output) == max_index(&data_pt.target) {
             total_correct += 1;
@@ -136,11 +139,11 @@ fn main() {
     let mut network = builder.build();
     network.init_rand();
 
-    print_network_stats(&mut network, &dataset);
-
-    let mut optim = AdamW::new(0.01, 0.003, &network);
-
     const BATCH_SIZE: u32 = 16;
+
+    let mut trainer = Trainer::new(network);
+
+    print_network_stats(&mut trainer, &dataset);
 
     dataset.shuffle(&mut rand::rng());
 
@@ -154,9 +157,9 @@ fn main() {
             let end = ((i + 1) * BATCH_SIZE) as usize;
             let batch = &dataset[begin..end];
             for data_pt in batch {
-                network.backward(&data_pt.input, &data_pt.target);
+                trainer.backward(&data_pt.input, &data_pt.target);
             }
-            network.update(&mut optim, BATCH_SIZE);
+            trainer.update(BATCH_SIZE);
 
             bar.inc(1);
         }
@@ -173,6 +176,6 @@ fn main() {
             num_batches as f64 / seconds,
             (num_batches * BATCH_SIZE) as f64 / seconds
         );
-        print_network_stats(&mut network, &dataset);
+        print_network_stats(&mut trainer, &dataset);
     }
 }

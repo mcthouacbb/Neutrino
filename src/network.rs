@@ -1,104 +1,45 @@
-use crate::{
-    layer::{DenseLayer, Layer, ReluLayer},
-    loss::{Loss, Mse},
-    optim::Optimizer,
-};
+use crate::layer::{DenseLayer, Layer, ReluLayer};
 
 pub struct Network {
     param_buffer: Vec<f32>,
-    value_buffer: Vec<Vec<f32>>,
-    param_grad_buffer: Vec<f32>,
-    value_grad_buffer: Vec<Vec<f32>>,
     layers: Vec<Layer>,
-    loss_fn: Box<dyn Loss>,
 }
 
 impl Network {
     fn new(num_params: u32, layers: Vec<Layer>) -> Self {
-        let mut value_buffer = Vec::with_capacity(layers.len() + 1);
-        value_buffer.push(vec![0.0; layers[0].input_size() as usize]);
-        for layer in &layers {
-            value_buffer.push(vec![0.0; layer.output_size() as usize]);
-        }
         let result = Self {
             param_buffer: vec![0.0; num_params as usize],
-            value_buffer: value_buffer.clone(),
-            param_grad_buffer: vec![0.0; num_params as usize],
-            value_grad_buffer: value_buffer,
             layers,
-            loss_fn: Box::new(Mse::new()),
         };
         result
     }
 
-    fn forward_all(&mut self, inputs: &[f32]) {
-        self.value_buffer[0].copy_from_slice(inputs);
-
-        for (idx, layer) in self.layers.iter().enumerate() {
-            let (left, right) = self.value_buffer.split_at_mut(idx + 1);
-            let inputs = &left[idx];
-            let outputs = &mut right[0];
-            match layer {
-                Layer::Dense(dense_layer) => dense_layer.forward(
-                    &self.param_buffer[dense_layer.param_buffer_range()],
-                    inputs,
-                    outputs,
-                ),
-                Layer::ReLu(relu_layer) => {
-                    relu_layer.forward(inputs, outputs);
-                }
-            }
-        }
-    }
-
-    fn forward_all_loss(&mut self, inputs: &[f32], targets: &[f32]) -> f32 {
-        self.forward_all(inputs);
-        let loss = self
-            .loss_fn
-            .forward(self.value_buffer.last().unwrap(), targets);
-        loss
-    }
-
-    pub fn forward_inference(&mut self, inputs: &[f32], targets: &[f32]) -> (Vec<f32>, f32) {
-        let loss = self.forward_all_loss(inputs, targets);
-        (self.value_buffer.last().unwrap().clone(), loss)
-    }
-
-    pub fn backward(&mut self, inputs: &[f32], targets: &[f32]) {
-        self.forward_all(inputs);
-
-        self.loss_fn.backward(
-            self.value_buffer.last().unwrap(),
-            targets,
-            self.value_grad_buffer.last_mut().unwrap(),
-        );
-        for (idx, layer) in self.layers.iter().enumerate().rev() {
-            let (left, right) = self.value_grad_buffer.split_at_mut(idx + 1);
-            let output_grads = &right[0];
-            let input_grads = &mut left[idx];
+    pub fn forward_inference(&self, inputs: &[f32]) -> Vec<f32> {
+        let mut input_buffer = inputs.to_vec();
+        let mut output_buffer = Vec::new();
+        for layer in &self.layers {
             match layer {
                 Layer::Dense(dense_layer) => {
-                    let layer_params = &self.param_buffer[dense_layer.param_buffer_range()];
-                    let layer_grads = &mut self.param_grad_buffer[dense_layer.param_buffer_range()];
-
-                    dense_layer.backward(
-                        layer_params,
-                        output_grads,
-                        &self.value_buffer[idx],
-                        layer_grads,
-                        input_grads,
+                    output_buffer.resize(dense_layer.output_size() as usize, 0.0);
+                    dense_layer.forward(
+                        &self.param_buffer[dense_layer.param_buffer_range()],
+                        &input_buffer,
+                        &mut output_buffer,
                     );
+
+                    input_buffer.resize(output_buffer.len(), 0.0);
+                    input_buffer.copy_from_slice(&output_buffer);
                 }
                 Layer::ReLu(relu_layer) => {
-                    relu_layer.backward(output_grads, &self.value_buffer[idx], input_grads);
+                    output_buffer.resize(relu_layer.size() as usize, 0.0);
+                    relu_layer.forward(&input_buffer, &mut output_buffer);
+
+                    input_buffer.resize(output_buffer.len(), 0.0);
+                    input_buffer.copy_from_slice(&output_buffer);
                 }
             }
         }
-    }
-
-    pub fn update(&mut self, optim: &mut dyn Optimizer, batch_size: u32) {
-        optim.update(&mut self.param_buffer, &self.param_grad_buffer, batch_size);
-        self.param_grad_buffer.fill(0.0);
+        output_buffer
     }
 
     pub fn init_rand(&mut self) {
@@ -114,6 +55,18 @@ impl Network {
 
     pub fn num_params(&self) -> u32 {
         self.param_buffer.len() as u32
+    }
+
+    pub fn layers(&self) -> &[Layer] {
+        &self.layers
+    }
+
+    pub fn param_buffer_mut(&mut self) -> &mut [f32] {
+        &mut self.param_buffer
+    }
+
+    pub fn param_buffer(&self) -> &[f32] {
+        &self.param_buffer
     }
 }
 
