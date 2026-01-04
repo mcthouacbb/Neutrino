@@ -3,7 +3,10 @@ use std::{fs, time::Instant};
 use indicatif::ProgressBar;
 use rand::seq::SliceRandom;
 
-use crate::{network::NetworkBuilder, trainer::Trainer};
+use crate::{
+    network::NetworkBuilder,
+    trainer::{Trainer, TrainerBuilder},
+};
 
 mod layer;
 mod loss;
@@ -128,16 +131,21 @@ fn main() {
     )
     .expect("Could not load MNIST dataset");
 
-    let mut builder = NetworkBuilder::new(784);
-    builder.add_dense_layer(256);
-    builder.add_relu();
-    builder.add_dense_layer(10);
-    let mut network = builder.build();
+    let mut network = NetworkBuilder::new(784)
+        .add_dense_layer(256)
+        .add_relu()
+        .add_dense_layer(10)
+        .build();
     network.init_rand();
 
     const BATCH_SIZE: u32 = 16;
 
-    let mut trainer = Trainer::new(network, BATCH_SIZE);
+    // let mut trainer = Trainer::new(network, BATCH_SIZE);
+    let mut trainer = TrainerBuilder::new(network)
+        .adamw(0.01, 0.003)
+        .batch_size(BATCH_SIZE)
+        .mse()
+        .build();
 
     print_network_stats(&mut trainer, &dataset);
 

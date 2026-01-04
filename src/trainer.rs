@@ -3,7 +3,7 @@ use crate::{
     layer::Layer,
     loss::{Loss, Mse},
     network::Network,
-    optim::{AdamW, Optimizer},
+    optim::{Adam, AdamW, Optimizer, Sgd},
 };
 
 pub struct Trainer {
@@ -18,7 +18,12 @@ pub struct Trainer {
 }
 
 impl Trainer {
-    pub fn new(network: Network, batch_size: u32) -> Self {
+    fn new(
+        network: Network,
+        batch_size: u32,
+        loss_fn: Box<dyn Loss>,
+        optimizer: Box<dyn Optimizer>,
+    ) -> Self {
         let mut value_buffer = Vec::with_capacity(network.layers().len() + 1);
         value_buffer.push(vec![
             0.0;
@@ -28,7 +33,6 @@ impl Trainer {
             value_buffer.push(vec![0.0; (batch_size * layer.output_size()) as usize]);
         }
 
-        let optimizer = AdamW::new(0.01, 0.003, &network);
         let num_params = network.num_params();
         Self {
             network: network,
@@ -37,8 +41,8 @@ impl Trainer {
             value_buffer: value_buffer.clone(),
             value_grad_buffer: value_buffer.clone(),
             target_buffer: value_buffer.last().unwrap().clone(),
-            loss_fn: Box::new(Mse::new()),
-            optimizer: Box::new(optimizer),
+            loss_fn,
+            optimizer,
         }
     }
 
@@ -133,5 +137,59 @@ impl Trainer {
             &self.param_grad_buffer,
             batch_size,
         );
+    }
+}
+
+pub struct TrainerBuilder {
+    network: Network,
+    batch_size: u32,
+    loss_fn: Option<Box<dyn Loss>>,
+    optimizer: Option<Box<dyn Optimizer>>,
+}
+
+impl TrainerBuilder {
+    pub fn new(network: Network) -> Self {
+        Self {
+            network,
+            batch_size: 0,
+            optimizer: None,
+            loss_fn: None,
+        }
+    }
+
+    pub fn build(self) -> Trainer {
+        Trainer::new(
+            self.network,
+            self.batch_size,
+            self.loss_fn
+                .expect("Please set a loss function before building a Trainer"),
+            self.optimizer
+                .expect("Please set an optimizer before building a Trainer"),
+        )
+    }
+
+    pub fn batch_size(mut self, batch_size: u32) -> Self {
+        self.batch_size = batch_size;
+        self
+    }
+
+    pub fn mse(mut self) -> Self {
+        self.loss_fn = Some(Box::new(Mse::new()));
+        self
+    }
+
+    pub fn adamw(mut self, lr: f32, lambda: f32) -> Self {
+        self.optimizer = Some(Box::new(AdamW::new(lr, lambda, &self.network)));
+        self
+    }
+
+    pub fn adam(mut self, lr: f32) -> Self {
+        self.optimizer = Some(Box::new(Adam::new(lr, &self.network)));
+        self
+    }
+
+    pub fn sgd(mut self, lr: f32) -> Self {
+        self.optimizer = Some(Box::new(Sgd::new(lr)));
+        self
     }
 }

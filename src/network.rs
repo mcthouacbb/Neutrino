@@ -86,14 +86,16 @@ impl NetworkBuilder {
         }
     }
 
-    pub fn add_dense_layer(&mut self, output_size: u32) {
+    pub fn add_dense_layer(mut self, output_size: u32) -> Self {
         let dense_layer = DenseLayer::new(self.next_input_size(), output_size, self.num_params);
         self.num_params += dense_layer.num_params();
         self.add_layer(Layer::Dense(dense_layer));
+        self
     }
 
-    pub fn add_relu(&mut self) {
+    pub fn add_relu(mut self) -> Self {
         self.add_layer(Layer::ReLu(ReluLayer::new(self.next_input_size())));
+        self
     }
 
     pub fn build(self) -> Network {
