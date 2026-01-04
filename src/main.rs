@@ -187,14 +187,14 @@ fn softmax(logits: &[f32]) -> Vec<f32> {
 
 fn run_drawing_program(network: Network) {
     let (mut rl, thread) = raylib::init()
-        .size(1050, 700)
+        .size(1350, 700)
         .title("Hello World")
         .vsync()
         .build();
 
     const WIDTH: u32 = 28;
     const HEIGHT: u32 = 28;
-    const DRAW_RADIUS: f32 = 1.2;
+    const DRAW_RADIUS: f32 = 2.0;
     let mut drawing_buffer = vec![0.0f32; (WIDTH * HEIGHT) as usize];
 
     while !rl.window_should_close() {
@@ -238,22 +238,27 @@ fn run_drawing_program(network: Network) {
 
         let logits = network.forward_inference(&drawing_buffer);
         let result = softmax(&logits);
+        let mut indices: Vec<usize> = (0..10).collect();
+        indices.sort_by(|&a, &b| result[b].partial_cmp(&result[a]).unwrap());
 
-        for digit in 0..10 {
-            d.draw_rectangle(700, 70 * digit + 10, 300, 50, Color::DARKGRAY);
+        for (idx, &digit) in indices.iter().enumerate() {
+            d.draw_rectangle(950, 70 * idx as i32 + 10, 300, 50, Color::DARKGRAY);
             d.draw_rectangle(
-                710,
-                70 * digit + 20,
+                960,
+                70 * idx as i32 + 20,
                 (280.0 * result[digit as usize]) as i32,
                 30,
                 Color::WHITE,
             );
+            let percent = format!("{:.2}%", result[digit as usize] * 100.0);
+            d.draw_text(&percent, 710, 70 * idx as i32 + 3, 70, Color::BLACK);
+
             let digit_char = (digit as u8 + '0' as u8) as char;
             let mut buf = [0u8; 4];
             d.draw_text(
                 digit_char.encode_utf8(&mut buf),
-                1010,
-                70 * digit + 3,
+                1280,
+                70 * idx as i32 + 3,
                 70,
                 Color::BLACK,
             );
