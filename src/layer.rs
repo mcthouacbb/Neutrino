@@ -1,32 +1,26 @@
 mod dense_layer;
 mod relu_layer;
-use std::ops::Range;
 
 pub use dense_layer::*;
 pub use relu_layer::*;
 
-use crate::tensor::Tensor;
+pub enum Layer {
+    ReLu(ReluLayer),
+    Dense(DenseLayer),
+}
 
-pub trait Layer {
-    fn input_size(&self) -> u32;
-    fn output_size(&self) -> u32;
-
-    fn init_rand(&mut self);
-    fn num_backwardables(&self) -> u32;
-    fn backwardable_idx(&self) -> u32;
-    fn backwardables(&self) -> &[Tensor];
-    fn backwardables_mut(&mut self) -> &mut [Tensor];
-    fn grad_idx_range(&self) -> Range<usize> {
-        (self.backwardable_idx() as usize)
-            ..((self.backwardable_idx() + self.num_backwardables()) as usize)
+impl Layer {
+    pub fn input_size(&self) -> u32 {
+        match self {
+            Self::Dense(dense_layer) => dense_layer.input_size(),
+            Self::ReLu(relu_layer) => relu_layer.size(),
+        }
     }
-    fn zero_grads(&self, grads: &mut [Tensor]);
-    fn forward(&self, inputs: &Tensor) -> Tensor;
-    fn backward(
-        &self,
-        output_grads: &Tensor,
-        inputs: &Tensor,
-        result_grads: &mut [Tensor],
-    ) -> Tensor;
-    fn update(&mut self, grads: &[Tensor], lr: f32);
+
+    pub fn output_size(&self) -> u32 {
+        match self {
+            Self::Dense(dense_layer) => dense_layer.output_size(),
+            Self::ReLu(relu_layer) => relu_layer.size(),
+        }
+    }
 }

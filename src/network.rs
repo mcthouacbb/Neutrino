@@ -1,133 +1,114 @@
-use std::sync::atomic::AtomicU32;
-
-use crate::{
-    layer::{DenseLayer, Layer, ReluLayer},
-    loss::{Loss, Mse},
-    optim::Optimizer,
-    tensor::{Shape, Tensor},
-};
-
-pub struct NetworkGrads(pub Vec<Tensor>);
+use crate::layer::{DenseLayer, Layer, ReluLayer};
 
 pub struct Network {
-    layers: Vec<Box<dyn Layer>>,
-    loss_fn: Box<dyn Loss>,
-    num_backwardables: u32,
+    param_buffer: Vec<f32>,
+    layers: Vec<Layer>,
 }
 
 impl Network {
-    fn new(layers: Vec<Box<dyn Layer>>, num_backwardables: u32) -> Self {
-        let mut result = Self {
+    fn new(num_params: u32, layers: Vec<Layer>) -> Self {
+        let result = Self {
+            param_buffer: vec![0.0; num_params as usize],
             layers,
-            loss_fn: Box::new(Mse::new()),
-            num_backwardables,
         };
         result
     }
 
-    pub fn forward_all(&self, inputs: &Tensor) -> Vec<Tensor> {
-        let mut result = vec![inputs.clone()];
-        for layer in self.layers.iter() {
-            result.push(layer.forward(result.last().unwrap()));
+    pub fn forward_inference(&self, inputs: &[f32]) -> Vec<f32> {
+        let mut input_buffer = inputs.to_vec();
+        let mut output_buffer = Vec::new();
+        for layer in &self.layers {
+            match layer {
+                Layer::Dense(dense_layer) => {
+                    output_buffer.resize(dense_layer.output_size() as usize, 0.0);
+                    dense_layer.forward(
+                        &self.param_buffer[dense_layer.param_buffer_range()],
+                        &input_buffer,
+                        &mut output_buffer,
+                        1,
+                    );
+
+                    input_buffer.resize(output_buffer.len(), 0.0);
+                    input_buffer.copy_from_slice(&output_buffer);
+                }
+                Layer::ReLu(relu_layer) => {
+                    output_buffer.resize(relu_layer.size() as usize, 0.0);
+                    relu_layer.forward(&input_buffer, &mut output_buffer, 1);
+
+                    input_buffer.resize(output_buffer.len(), 0.0);
+                    input_buffer.copy_from_slice(&output_buffer);
+                }
+            }
         }
-        result
-    }
-
-    pub fn forward_all_loss(&self, inputs: &Tensor, targets: &Tensor) -> (Vec<Tensor>, f32) {
-        let result = self.forward_all(inputs);
-        let loss = self.loss_fn.forward(result.last().unwrap(), targets);
-        (result, loss)
-    }
-
-    pub fn forward_loss(&self, inputs: &Tensor, targets: &Tensor) -> f32 {
-        self.forward_all_loss(inputs, targets).1
-    }
-
-    pub fn forward(&self, inputs: &Tensor) -> Tensor {
-        // clone probably not optimal here
-        // but idk how to fix it
-        self.forward_all(inputs).last().unwrap().clone()
-    }
-
-    pub fn backward(&mut self, inputs: &Tensor, targets: &Tensor, grads: &mut NetworkGrads) {
-        let (outputs, loss) = self.forward_all_loss(inputs, targets);
-
-        let mut output_grads = self.loss_fn.backward(outputs.last().unwrap(), targets);
-        for (idx, layer) in self.layers.iter().enumerate().rev() {
-            let layer_grads = &mut grads.0[layer.grad_idx_range()];
-            output_grads = layer.backward(&output_grads, &outputs[idx], layer_grads);
-        }
-    }
-
-    pub fn update(&mut self, grads: &NetworkGrads, optim: &mut dyn Optimizer, batch_size: u32) {
-        for layer in self.layers.iter_mut() {
-            let grad_idx_range = layer.grad_idx_range();
-            optim.update_range(
-                layer.backwardables_mut(),
-                &grads.0[grad_idx_range.clone()],
-                grad_idx_range,
-                batch_size,
-            );
-        }
+        output_buffer
     }
 
     pub fn init_rand(&mut self) {
         for layer in &mut self.layers {
-            layer.init_rand();
+            match layer {
+                Layer::Dense(dense_layer) => {
+                    dense_layer.init_rand(&mut self.param_buffer[dense_layer.param_buffer_range()])
+                }
+                _ => {}
+            }
         }
     }
 
-    pub fn zero_grads(&self) -> NetworkGrads {
-        let mut result = NetworkGrads(vec![
-            Tensor::zeros(Shape::scalar());
-            self.num_backwardables as usize
-        ]);
-        for layer in &self.layers {
-            layer.zero_grads(&mut result.0[layer.grad_idx_range()]);
-        }
-        result
+    pub fn num_params(&self) -> u32 {
+        self.param_buffer.len() as u32
+    }
+
+    pub fn layers(&self) -> &[Layer] {
+        &self.layers
+    }
+
+    pub fn param_buffer_mut(&mut self) -> &mut [f32] {
+        &mut self.param_buffer
+    }
+
+    pub fn param_buffer(&self) -> &[f32] {
+        &self.param_buffer
     }
 }
 
 pub struct NetworkBuilder {
     input_size: u32,
-    num_backwardables: u32,
-    layers: Vec<Box<dyn Layer>>,
+    num_params: u32,
+    layers: Vec<Layer>,
 }
 
 impl NetworkBuilder {
     pub fn new(input_size: u32) -> Self {
         Self {
             input_size,
-            num_backwardables: 0,
+            num_params: 0,
             layers: Vec::new(),
         }
     }
 
-    pub fn add_dense_layer(&mut self, output_size: u32) {
-        self.add_layer(Box::new(DenseLayer::new(
-            self.next_input_size(),
-            output_size,
-            self.num_backwardables,
-        )));
+    pub fn add_dense_layer(mut self, output_size: u32) -> Self {
+        let dense_layer = DenseLayer::new(self.next_input_size(), output_size, self.num_params);
+        self.num_params += dense_layer.num_params();
+        self.add_layer(Layer::Dense(dense_layer));
+        self
     }
 
-    pub fn add_relu(&mut self) {
-        self.add_layer(Box::new(ReluLayer::new(self.next_input_size())));
+    pub fn add_relu(mut self) -> Self {
+        self.add_layer(Layer::ReLu(ReluLayer::new(self.next_input_size())));
+        self
     }
 
     pub fn build(self) -> Network {
-        Network::new(self.layers, self.num_backwardables)
+        Network::new(self.num_params, self.layers)
     }
 
-    fn add_layer(&mut self, layer: Box<dyn Layer>) {
-        self.num_backwardables += layer.num_backwardables();
+    fn add_layer(&mut self, layer: Layer) {
         self.layers.push(layer);
     }
 
     fn next_input_size(&self) -> u32 {
         if let Some(last_layer) = self.layers.last() {
-            last_layer.as_ref().output_size()
+            last_layer.output_size()
         } else {
             self.input_size
         }
