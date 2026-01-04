@@ -1,5 +1,8 @@
 use crate::layer::{DenseLayer, Layer, ReluLayer};
 
+use wincode_derive::{SchemaRead, SchemaWrite};
+
+#[derive(Clone, SchemaRead, SchemaWrite)]
 pub struct Network {
     param_buffer: Vec<f32>,
     layers: Vec<Layer>,

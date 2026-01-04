@@ -3,7 +3,9 @@ mod relu_layer;
 
 pub use dense_layer::*;
 pub use relu_layer::*;
+use wincode_derive::{SchemaRead, SchemaWrite};
 
+#[derive(Clone, SchemaRead, SchemaWrite)]
 pub enum Layer {
     ReLu(ReluLayer),
     Dense(DenseLayer),

@@ -1,10 +1,14 @@
-use std::{fs, time::Instant};
+use std::{
+    fs::{self, File},
+    io::{ErrorKind, Read, Write},
+    time::Instant,
+};
 
 use indicatif::ProgressBar;
 use rand::seq::SliceRandom;
 
 use crate::{
-    network::NetworkBuilder,
+    network::{Network, NetworkBuilder},
     trainer::{Trainer, TrainerBuilder},
 };
 
@@ -32,7 +36,11 @@ fn max_index(t: &[f32]) -> usize {
     max_idx
 }
 
-fn print_network_stats(trainer: &mut Trainer, dataset: &Vec<DataPoint>) {
+fn print_network_stats(
+    trainer: &mut Trainer,
+    dataset: &Vec<DataPoint>,
+    test_dataset: &Vec<DataPoint>,
+) {
     let mut total_loss = 0.0;
     let mut total_correct = 0;
     for data_pt in dataset {
@@ -43,10 +51,26 @@ fn print_network_stats(trainer: &mut Trainer, dataset: &Vec<DataPoint>) {
             total_correct += 1;
         }
     }
+
+    let mut total_test_loss = 0.0;
+    let mut total_test_correct = 0;
+    for data_pt in test_dataset {
+        let output = trainer.network().forward_inference(&data_pt.input);
+        let loss = trainer.loss_fn().forward(&output, &data_pt.target);
+        total_test_loss += loss;
+        if max_index(&output) == max_index(&data_pt.target) {
+            total_test_correct += 1;
+        }
+    }
+
     let loss = total_loss / dataset.len() as f32;
     let accuracy = total_correct as f32 / dataset.len() as f32;
+    let test_loss = total_test_loss / test_dataset.len() as f32;
+    let test_accuracy = total_test_correct as f32 / test_dataset.len() as f32;
     println!("Network loss: {}", loss);
     println!("Network accuracy: {}", accuracy);
+    println!("Network test loss: {}", test_loss);
+    println!("Network test accuracy: {}", test_accuracy);
 }
 
 fn load_mnist_dataset(image_file: &str, label_file: &str) -> Option<Vec<DataPoint>> {
@@ -122,14 +146,47 @@ fn load_mnist_dataset(image_file: &str, label_file: &str) -> Option<Vec<DataPoin
     Some(result)
 }
 
+fn load_network(mut file: File) {
+    let mut buffer = Vec::new();
+    match file.read_to_end(&mut buffer) {
+        Ok(_) => {}
+        Err(err) => {
+            println!("Error reading file mnist-net.bin: {}", err.to_string());
+            return;
+        }
+    }
+    let network = wincode::deserialize::<Network>(&buffer).expect("Could not deserialize network");
+    println!("Loaded network file");
+}
+
 fn main() {
+    match File::open("mnist-net.bin") {
+        Ok(file) => {
+            println!("Loading network mnist-net.bin");
+            load_network(file);
+            return;
+        }
+        Err(err) => {
+            if err.kind() == ErrorKind::NotFound {
+                println!("Training a network");
+            } else {
+                println!("Could not open file mnist-net.bin: {}", err.to_string());
+            }
+        }
+    }
+
     let args: Vec<String> = std::env::args().collect();
     let mnist_dir = args[1].clone();
     let mut dataset = load_mnist_dataset(
         (mnist_dir.clone() + "/train-images-idx3-ubyte").as_str(),
-        (mnist_dir + "/train-labels-idx1-ubyte").as_str(),
+        (mnist_dir.clone() + "/train-labels-idx1-ubyte").as_str(),
     )
     .expect("Could not load MNIST dataset");
+    let test_dataset = load_mnist_dataset(
+        (mnist_dir.clone() + "/t10k-images-idx3-ubyte").as_str(),
+        (mnist_dir.clone() + "/t10k-labels-idx1-ubyte").as_str(),
+    )
+    .expect("Could not load MNIST test dataset");
 
     let mut network = NetworkBuilder::new(784)
         .add_dense_layer(256)
@@ -138,20 +195,20 @@ fn main() {
         .build();
     network.init_rand();
 
-    const BATCH_SIZE: u32 = 16;
+    const BATCH_SIZE: u32 = 32;
 
     // let mut trainer = Trainer::new(network, BATCH_SIZE);
     let mut trainer = TrainerBuilder::new(network)
-        .adamw(0.01, 0.003)
+        .adamw(0.003, 0.003)
         .batch_size(BATCH_SIZE)
         .cross_entropy()
         .build();
 
-    print_network_stats(&mut trainer, &dataset);
+    print_network_stats(&mut trainer, &dataset, &test_dataset);
 
     dataset.shuffle(&mut rand::rng());
 
-    for i in 0..100000 {
+    for i in 0..70 {
         let num_batches = dataset.len() as u32 / BATCH_SIZE;
         let start_time = Instant::now();
 
@@ -176,6 +233,18 @@ fn main() {
             num_batches as f64 / seconds,
             (num_batches * BATCH_SIZE) as f64 / seconds
         );
-        print_network_stats(&mut trainer, &dataset);
+        print_network_stats(&mut trainer, &dataset, &test_dataset);
+    }
+
+    let data = wincode::serialize(trainer.network()).expect("Could not serialize network");
+    let mut net_file =
+        File::create("mnist-net.bin").expect("Could not open file mnist-net.bin for writing");
+    match net_file.write_all(&data) {
+        Ok(()) => {
+            println!("Wrote network to file mnist-net.bin");
+        }
+        Err(err) => {
+            println!("Error opening file: {}", err.to_string());
+        }
     }
 }

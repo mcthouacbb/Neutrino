@@ -1,3 +1,6 @@
+use wincode_derive::{SchemaRead, SchemaWrite};
+
+#[derive(Clone, SchemaRead, SchemaWrite)]
 pub struct ReluLayer {
     size: u32,
 }

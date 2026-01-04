@@ -1,7 +1,9 @@
 use std::ops::Range;
 
 use rand::Rng;
+use wincode_derive::{SchemaRead, SchemaWrite};
 
+#[derive(Clone, SchemaRead, SchemaWrite)]
 pub struct DenseLayer {
     input_size: u32,
     output_size: u32,
