@@ -54,6 +54,28 @@ impl Trainer {
         self.loss_fn.as_ref()
     }
 
+    pub fn run_batch_augmented<F>(&mut self, batch: &[DataPoint], augmenter: F)
+    where
+        F: Fn(&[f32]) -> Vec<f32>,
+    {
+        assert!(batch.len() == self.batch_size as usize);
+
+        for (idx, data_pt) in batch.iter().enumerate() {
+            self.value_buffer[0][idx * data_pt.input.len()..(idx + 1) * data_pt.input.len()]
+                .copy_from_slice(&augmenter(&data_pt.input));
+        }
+
+        self.forward_all();
+
+        let output_size = self.network.layers().last().unwrap().output_size();
+        for (idx, data_pt) in batch.iter().enumerate() {
+            self.target_buffer[idx * output_size as usize..(idx + 1) * output_size as usize]
+                .copy_from_slice(&data_pt.target);
+        }
+        self.backward();
+        self.update(batch.len() as u32);
+    }
+
     pub fn run_batch(&mut self, batch: &[DataPoint]) {
         assert!(batch.len() == self.batch_size as usize);
 

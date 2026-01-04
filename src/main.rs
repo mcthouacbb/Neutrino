@@ -1,4 +1,5 @@
 use std::{
+    f32::consts,
     fs::{self, File},
     io::{ErrorKind, Read, Write},
     time::Instant,
@@ -6,7 +7,11 @@ use std::{
 
 use indicatif::ProgressBar;
 use rand::seq::SliceRandom;
-use raylib::{color::Color, ffi::MouseButton, prelude::RaylibDraw};
+use raylib::{
+    color::Color,
+    ffi::{KeyboardKey, MouseButton},
+    prelude::RaylibDraw,
+};
 
 use crate::{
     network::{Network, NetworkBuilder},
@@ -253,6 +258,125 @@ fn run_drawing_program(network: Network) {
     }
 }
 
+fn augment_image(pixels: &[f32]) -> Vec<f32> {
+    let mut new_image = vec![0.0f32; 784];
+
+    let translation_x = rand::random_range(-4.0f32..=4.0f32);
+    let translation_y = rand::random_range(-4.0f32..=4.0f32);
+
+    let rotation = rand::random_range(-15.0f32..=15.0f32) * consts::PI / 180.0;
+
+    let scale = rand::random_range(0.9f32..=1.1f32);
+
+    for y in 0..28 {
+        for x in 0..28 {
+            let px = x as f32 + 0.5;
+            let py = y as f32 + 0.5;
+
+            let mut transformed_x = (px - 14.0) * rotation.cos() + (py - 14.0) * rotation.sin();
+            let mut transformed_y = (py - 14.0) * rotation.cos() - (px - 14.0) * rotation.sin();
+
+            transformed_x *= scale;
+            transformed_y *= scale;
+
+            transformed_x += translation_x + 14.0;
+            transformed_y += translation_y + 14.0;
+
+            transformed_x = transformed_x.clamp(0.5, 27.5);
+            transformed_y = transformed_y.clamp(0.5, 27.5);
+
+            let sample_x = (transformed_x - 0.5).floor() as usize;
+            let sample_y = (transformed_y - 0.5).floor() as usize;
+            let factor_x = (transformed_x - 0.5).fract();
+            let factor_y = (transformed_y - 0.5).fract();
+
+            let ll = pixels[sample_y * 28 + sample_x];
+            let ul = pixels[sample_y * 28 + (sample_x + 1).min(27)];
+            let lu = pixels[(sample_y + 1).min(27) * 28 + sample_x];
+            let uu = pixels[(sample_y + 1).min(27) * 28 + (sample_x + 1).min(27)];
+            let ly = ll * (1.0 - factor_x) + ul * factor_x;
+            let uy = lu * (1.0 - factor_x) + uu * factor_x;
+            let sample = ly * (1.0 - factor_y) + uy * factor_y;
+            new_image[y * 28 + x] = sample;
+        }
+    }
+
+    for _ in 0..8 {
+        new_image[rand::random_range(0..784) as usize] = rand::random_range(0.0..=1.0);
+    }
+
+    new_image
+}
+
+fn visualize_augmentations(dataset: &Vec<DataPoint>) {
+    let (mut rl, thread) = raylib::init()
+        .size(1500, 700)
+        .title("Hello World")
+        .vsync()
+        .build();
+
+    const WIDTH: u32 = 28;
+    const HEIGHT: u32 = 28;
+    let mut curr_idx = 0usize;
+    let mut curr_image = &dataset[curr_idx].input;
+    let mut curr_augmented_image = augment_image(&dataset[curr_idx].input);
+    let mut curr_label = max_index(&dataset[curr_idx].target);
+
+    while !rl.window_should_close() {
+        if rl.is_key_pressed(KeyboardKey::KEY_N) {
+            curr_idx += 1;
+            curr_image = &dataset[curr_idx].input;
+            curr_augmented_image = augment_image(&dataset[curr_idx].input);
+            curr_label = max_index(&dataset[curr_idx].target);
+        }
+
+        let mut d = rl.begin_drawing(&thread);
+
+        d.clear_background(Color::WHITE);
+        let drawing_buffer = curr_image;
+        for y in 0..HEIGHT {
+            for x in 0..WIDTH {
+                // clamp probably not necessary but I'm being safe
+                let brightness =
+                    (drawing_buffer[(y * WIDTH + x) as usize] * 255.0).clamp(0.0, 255.0) as u8;
+                d.draw_rectangle(
+                    x as i32 * 25,
+                    y as i32 * 25,
+                    25,
+                    25,
+                    Color::new(brightness, brightness, brightness, 255),
+                )
+            }
+        }
+
+        let drawing_buffer = &curr_augmented_image;
+        for y in 0..HEIGHT {
+            for x in 0..WIDTH {
+                // clamp probably not necessary but I'm being safe
+                let brightness =
+                    (drawing_buffer[(y * WIDTH + x) as usize] * 255.0).clamp(0.0, 255.0) as u8;
+                d.draw_rectangle(
+                    x as i32 * 25 + 710,
+                    y as i32 * 25,
+                    25,
+                    25,
+                    Color::new(brightness, brightness, brightness, 255),
+                )
+            }
+        }
+
+        let digit_char = (curr_label as u8 + '0' as u8) as char;
+        let mut buf = [0u8; 4];
+        d.draw_text(
+            digit_char.encode_utf8(&mut buf),
+            1420,
+            300,
+            100,
+            Color::BLACK,
+        );
+    }
+}
+
 fn main() {
     match File::open("mnist-net.bin") {
         Ok(file) => {
@@ -264,9 +388,10 @@ fn main() {
         }
         Err(err) => {
             if err.kind() == ErrorKind::NotFound {
-                println!("Training a network");
+                println!("No network found");
             } else {
                 println!("Could not open file mnist-net.bin: {}", err.to_string());
+                return;
             }
         }
     }
@@ -283,6 +408,14 @@ fn main() {
         (mnist_dir.clone() + "/t10k-labels-idx1-ubyte").as_str(),
     )
     .expect("Could not load MNIST test dataset");
+
+    if args.len() > 2 && args[2] == "visualize" {
+        println!("Visualizing dataset augmentations");
+        visualize_augmentations(&dataset);
+        return;
+    }
+
+    println!("Training a network");
 
     let mut network = NetworkBuilder::new(784)
         .add_dense_layer(256)
@@ -313,7 +446,7 @@ fn main() {
             let begin = (i * BATCH_SIZE) as usize;
             let end = ((i + 1) * BATCH_SIZE) as usize;
             let batch = &dataset[begin..end];
-            trainer.run_batch(batch);
+            trainer.run_batch_augmented(batch, augment_image);
             bar.inc(1);
         }
 
