@@ -63,14 +63,34 @@ impl DenseLayer {
 
         let (weights, biases) = param_buffer.split_at(self.num_weights() as usize);
 
+        // don't ask me to explain the arguments, I got them from chatgpt
+        unsafe {
+            matrixmultiply::sgemm(
+                batch_size as usize,
+                self.input_size as usize,
+                self.output_size as usize,
+                1.0,
+                inputs.as_ptr(),
+                self.input_size as isize,
+                1,
+                weights.as_ptr(),
+                1,
+                self.input_size as isize,
+                0.0,
+                outputs.as_mut_ptr(),
+                self.output_size as isize,
+                1,
+            );
+        }
+
         for i in 0..batch_size as usize {
             for j in 0..self.output_size as usize {
-                outputs[i * self.output_size as usize + j] = biases[j];
-                for k in 0..self.input_size as usize {
+                outputs[i * self.output_size as usize + j] += biases[j];
+                /*for k in 0..self.input_size as usize {
                     outputs[i * self.output_size as usize + j] += inputs
                         [i * self.input_size as usize + k]
                         * weights[j * self.input_size as usize + k];
-                }
+                }*/
             }
         }
     }
@@ -95,8 +115,6 @@ impl DenseLayer {
         let (weight_grads, bias_grads) = result_grads.split_at_mut(self.num_weights() as usize);
 
         bias_grads.fill(0.0);
-        weight_grads.fill(0.0);
-        input_grads.fill(0.0);
 
         // bias gradients
         for i in 0..batch_size as usize {
@@ -106,17 +124,46 @@ impl DenseLayer {
         }
 
         // weight gradients
-        for i in 0..batch_size as usize {
-            for j in 0..self.output_size as usize {
-                for k in 0..self.input_size as usize {
-                    weight_grads[j * self.input_size as usize + k] += inputs
-                        [i * self.input_size as usize + k]
-                        * output_grads[i * self.output_size as usize + j];
-                }
-            }
+        unsafe {
+            matrixmultiply::sgemm(
+                self.output_size as usize,
+                batch_size as usize,
+                self.input_size as usize,
+                1.0,
+                output_grads.as_ptr(),
+                1,
+                self.output_size as isize,
+                inputs.as_ptr(),
+                self.input_size as isize,
+                1,
+                0.0,
+                weight_grads.as_mut_ptr(),
+                self.input_size as isize,
+                1,
+            );
         }
 
-        for i in 0..batch_size as usize {
+        // input gradients
+        unsafe {
+            matrixmultiply::sgemm(
+                batch_size as usize,
+                self.output_size as usize,
+                self.input_size as usize,
+                1.0,
+                output_grads.as_ptr(),
+                self.output_size as isize,
+                1,
+                weights.as_ptr(),
+                self.input_size as isize,
+                1,
+                0.0,
+                input_grads.as_mut_ptr(),
+                self.input_size as isize,
+                1,
+            );
+        }
+
+        /*for i in 0..batch_size as usize {
             for j in 0..self.output_size as usize {
                 for k in 0..self.input_size as usize {
                     input_grads[i * self.input_size as usize + k] += output_grads
@@ -124,6 +171,6 @@ impl DenseLayer {
                         * weights[j * self.input_size as usize + k];
                 }
             }
-        }
+        }*/
     }
 }
