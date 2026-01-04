@@ -144,7 +144,7 @@ fn main() {
     let mut trainer = TrainerBuilder::new(network)
         .adamw(0.01, 0.003)
         .batch_size(BATCH_SIZE)
-        .mse()
+        .cross_entropy()
         .build();
 
     print_network_stats(&mut trainer, &dataset);

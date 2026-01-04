@@ -1,7 +1,7 @@
 use crate::{
     DataPoint,
     layer::Layer,
-    loss::{Loss, Mse},
+    loss::{CrossEntropy, Loss, Mse},
     network::Network,
     optim::{Adam, AdamW, Optimizer, Sgd},
 };
@@ -175,6 +175,11 @@ impl TrainerBuilder {
 
     pub fn mse(mut self) -> Self {
         self.loss_fn = Some(Box::new(Mse::new()));
+        self
+    }
+
+    pub fn cross_entropy(mut self) -> Self {
+        self.loss_fn = Some(Box::new(CrossEntropy::new()));
         self
     }
 
