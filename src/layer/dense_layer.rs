@@ -86,11 +86,6 @@ impl DenseLayer {
         for i in 0..batch_size as usize {
             for j in 0..self.output_size as usize {
                 outputs[i * self.output_size as usize + j] += biases[j];
-                /*for k in 0..self.input_size as usize {
-                    outputs[i * self.output_size as usize + j] += inputs
-                        [i * self.input_size as usize + k]
-                        * weights[j * self.input_size as usize + k];
-                }*/
             }
         }
     }
@@ -110,7 +105,7 @@ impl DenseLayer {
         assert!(result_grads.len() == self.num_params() as usize);
         assert!(input_grads.len() == (batch_size * self.input_size) as usize);
 
-        let (weights, biases) = param_buffer.split_at(self.num_weights() as usize);
+        let (weights, _biases) = param_buffer.split_at(self.num_weights() as usize);
 
         let (weight_grads, bias_grads) = result_grads.split_at_mut(self.num_weights() as usize);
 
@@ -162,15 +157,5 @@ impl DenseLayer {
                 1,
             );
         }
-
-        /*for i in 0..batch_size as usize {
-            for j in 0..self.output_size as usize {
-                for k in 0..self.input_size as usize {
-                    input_grads[i * self.input_size as usize + k] += output_grads
-                        [i * self.output_size as usize + j]
-                        * weights[j * self.input_size as usize + k];
-                }
-            }
-        }*/
     }
 }

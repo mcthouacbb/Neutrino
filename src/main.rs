@@ -3,11 +3,7 @@ use std::{fs, time::Instant};
 use indicatif::ProgressBar;
 use rand::seq::SliceRandom;
 
-use crate::{
-    network::{Network, NetworkBuilder},
-    optim::AdamW,
-    trainer::Trainer,
-};
+use crate::{network::NetworkBuilder, trainer::Trainer};
 
 mod layer;
 mod loss;
