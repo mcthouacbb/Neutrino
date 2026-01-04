@@ -194,10 +194,13 @@ fn run_drawing_program(network: Network) {
 
     const WIDTH: u32 = 28;
     const HEIGHT: u32 = 28;
-    const DRAW_RADIUS: f32 = 2.0;
+    const DRAW_RADIUS: f32 = 1.2;
     let mut drawing_buffer = vec![0.0f32; (WIDTH * HEIGHT) as usize];
 
     while !rl.window_should_close() {
+        if rl.is_key_pressed(KeyboardKey::KEY_C) {
+            drawing_buffer.fill(0.0);
+        }
         if rl.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT) {
             let mouse_x = (rl.get_mouse_x() as f32) / 25.0;
             let mouse_y = (rl.get_mouse_y() as f32) / 25.0;
@@ -264,9 +267,9 @@ fn augment_image(pixels: &[f32]) -> Vec<f32> {
     let translation_x = rand::random_range(-4.0f32..=4.0f32);
     let translation_y = rand::random_range(-4.0f32..=4.0f32);
 
-    let rotation = rand::random_range(-15.0f32..=15.0f32) * consts::PI / 180.0;
+    let rotation = rand::random_range(-12.5f32..=12.5f32) * consts::PI / 180.0;
 
-    let scale = rand::random_range(0.9f32..=1.1f32);
+    let scale = rand::random_range(0.85f32..=1.15f32);
 
     for y in 0..28 {
         for x in 0..28 {
@@ -420,6 +423,8 @@ fn main() {
     let mut network = NetworkBuilder::new(784)
         .add_dense_layer(256)
         .add_relu()
+        .add_dense_layer(64)
+        .add_relu()
         .add_dense_layer(10)
         .build();
     network.init_rand();
@@ -428,7 +433,7 @@ fn main() {
 
     // let mut trainer = Trainer::new(network, BATCH_SIZE);
     let mut trainer = TrainerBuilder::new(network)
-        .adamw(0.003, 0.003)
+        .adamw(0.001, 0.003)
         .batch_size(BATCH_SIZE)
         .cross_entropy()
         .build();
