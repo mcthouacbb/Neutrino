@@ -6,6 +6,7 @@ use std::{
 
 use indicatif::ProgressBar;
 use rand::seq::SliceRandom;
+use raylib::{color::Color, ffi::MouseButton, prelude::RaylibDraw};
 
 use crate::{
     network::{Network, NetworkBuilder},
@@ -146,24 +147,119 @@ fn load_mnist_dataset(image_file: &str, label_file: &str) -> Option<Vec<DataPoin
     Some(result)
 }
 
-fn load_network(mut file: File) {
+fn load_network(mut file: File) -> Option<Network> {
     let mut buffer = Vec::new();
     match file.read_to_end(&mut buffer) {
         Ok(_) => {}
         Err(err) => {
             println!("Error reading file mnist-net.bin: {}", err.to_string());
-            return;
+            return None;
         }
     }
     let network = wincode::deserialize::<Network>(&buffer).expect("Could not deserialize network");
     println!("Loaded network file");
+
+    Some(network)
+}
+
+fn softmax(logits: &[f32]) -> Vec<f32> {
+    let mut max = logits[0];
+    for i in 1..logits.len() {
+        max = max.max(logits[i]);
+    }
+
+    let mut exp_sum = 0.0;
+    for logit in logits {
+        exp_sum += (logit - max).exp();
+    }
+
+    let mut result = Vec::with_capacity(logits.len());
+    for logit in logits {
+        result.push((logit - max).exp() / exp_sum);
+    }
+    result
+}
+
+fn run_drawing_program(network: Network) {
+    let (mut rl, thread) = raylib::init()
+        .size(1050, 700)
+        .title("Hello World")
+        .vsync()
+        .build();
+
+    const WIDTH: u32 = 28;
+    const HEIGHT: u32 = 28;
+    const DRAW_RADIUS: f32 = 2.0;
+    let mut drawing_buffer = vec![0.0f32; (WIDTH * HEIGHT) as usize];
+
+    while !rl.window_should_close() {
+        if rl.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT) {
+            let mouse_x = (rl.get_mouse_x() as f32) / 25.0;
+            let mouse_y = (rl.get_mouse_y() as f32) / 25.0;
+            for y in 0..HEIGHT {
+                for x in 0..WIDTH {
+                    let pixel = &mut drawing_buffer[(y * WIDTH + x) as usize];
+                    let dist =
+                        (mouse_x - (x as f32 + 0.5)).powi(2) + (mouse_y - (y as f32 + 0.5)).powi(2);
+                    if dist <= DRAW_RADIUS {
+                        *pixel = 1.0;
+                    } else if dist <= DRAW_RADIUS + 1.5 {
+                        *pixel = pixel.max((dist - DRAW_RADIUS) / 1.5);
+                    }
+                }
+            }
+        }
+
+        let mut d = rl.begin_drawing(&thread);
+
+        d.clear_background(Color::WHITE);
+        for y in 0..HEIGHT {
+            for x in 0..WIDTH {
+                // clamp probably not necessary but I'm being safe
+                let brightness =
+                    (drawing_buffer[(y * WIDTH + x) as usize] * 255.0).clamp(0.0, 255.0) as u8;
+                d.draw_rectangle(
+                    x as i32 * 25,
+                    y as i32 * 25,
+                    25,
+                    25,
+                    Color::new(brightness, brightness, brightness, 255),
+                )
+            }
+        }
+
+        let logits = network.forward_inference(&drawing_buffer);
+        let result = softmax(&logits);
+
+        for digit in 0..10 {
+            d.draw_rectangle(700, 70 * digit + 10, 300, 50, Color::DARKGRAY);
+            d.draw_rectangle(
+                710,
+                70 * digit + 20,
+                (280.0 * result[digit as usize]) as i32,
+                30,
+                Color::WHITE,
+            );
+            let digit_char = (digit as u8 + '0' as u8) as char;
+            let mut buf = [0u8; 4];
+            d.draw_text(
+                digit_char.encode_utf8(&mut buf),
+                1010,
+                70 * digit + 3,
+                70,
+                Color::BLACK,
+            );
+        }
+    }
 }
 
 fn main() {
     match File::open("mnist-net.bin") {
         Ok(file) => {
             println!("Loading network mnist-net.bin");
-            load_network(file);
+            if let Some(network) = load_network(file) {
+                run_drawing_program(network);
+            }
             return;
         }
         Err(err) => {
